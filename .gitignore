@@ -1,0 +1,20 @@
+# Track configuration only. Everything else here is session state, cache, or credentials:
+# projects/ holds 749M of transcripts, file-history/ holds 94M of edit snapshots, and
+# credential files land at this level. Ignore every path, then re-include configuration by name.
+*
+
+!.gitignore
+!CLAUDE.md
+!settings.json
+!keybindings.json
+
+!agents/
+!agents/**
+!commands/
+!commands/**
+!hooks/
+!hooks/**
+!skills/
+!skills/**
+!output-styles/
+!output-styles/**
