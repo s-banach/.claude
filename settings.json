@@ -5,13 +5,36 @@
   "attribution": {
     "sessionUrl": false
   },
-  "model": "opus",
+  "model": "fable",
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true
   },
   "effortLevel": "high",
   "autoMemoryEnabled": false,
   "skipWorkflowUsageWarning": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["/Users/bunbie/.claude/hooks/no-unscoped-search.py"],
+            "timeout": 10,
+            "statusMessage": "Checking search scope"
+          },
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["/Users/bunbie/.claude/hooks/no-unwritten-python.py"],
+            "timeout": 10,
+            "statusMessage": "Checking for Python file edits"
+          }
+        ]
+      }
+    ]
+  },
   "theme": "auto",
   "autoCompactEnabled": true,
   "agentPushNotifEnabled": true

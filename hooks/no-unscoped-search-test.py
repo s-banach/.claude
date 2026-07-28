@@ -23,11 +23,17 @@ CASES = [
     ("ag pattern", True),
     ("sudo grep -r secret /", True),
     ("cd /tmp && grep -r x .", True),
+    # A quoted root is still that root.
+    ('grep -r pattern "."', True),
+    ("grep -r pattern '.'", True),
+    ('grep -r pattern "$HOME"', True),
     # Recursive search rooted in a dependency or build directory: denied.
     ("grep -r pattern .venv", True),
     ("rg pattern node_modules", True),
     ("rg pattern crate/target/debug", True),
     ("find node_modules -name '*.json'", True),
+    ('rg pattern "node_modules"', True),
+    ('grep -r TODO "my dir/node_modules"', True),
     # Ignore rules switched off: denied.
     ("rg -uu pattern src/", True),
     ("rg --no-ignore pattern src/", True),
@@ -42,6 +48,14 @@ CASES = [
     ("rg -t rust TODO crate/src", False),
     ("find crate/src -name '*.rs'", False),
     ("find . -maxdepth 1 -name '*.toml'", False),
+    ("rg --max-depth 1 pattern .", False),
+    ("rg --max-depth=1 pattern .", False),
+    ('grep -r TODO "crate/src"', False),
+    ('grep -r TODO "my dir"', False),
+    # An option's value is not a search path.
+    ("find src -name node_modules", False),
+    ("find crate/src -name .venv", False),
+    ("grep -r pattern src --exclude-dir node_modules", False),
     # Not a recursive walk: allowed.
     ("grep -c . settings.json", False),
     ("grep -n TODO crate/src/engine.rs", False),

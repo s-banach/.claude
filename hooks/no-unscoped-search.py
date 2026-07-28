@@ -7,7 +7,7 @@ it judges the one thing the command text does show: whether the walk is bounded.
 A recursive search is denied when its root is the whole working tree (`.`, `/`,
 `~`, or no path at all), when its root is a directory that holds dependencies or
 build output, or when a flag switches the walker's ignore rules off. A search
-given a subdirectory, named files, or a pipe is left alone.
+given a subdirectory, named files, a depth cap, or a pipe is left alone.
 """
 
 import json
@@ -42,6 +42,11 @@ VALUE_OPTIONS = {
     "--regexp", "--file", "--max-count", "--include", "--exclude",
     "--exclude-dir", "--glob", "--type", "--type-not", "--after-context",
     "--before-context", "--context", "--threads", "--directories",
+    "--max-depth", "--min-depth",
+    # find primaries: their value is a name, a size, or a time, never a path.
+    "-name", "-iname", "-path", "-ipath", "-regex", "-iregex", "-type",
+    "-size", "-perm", "-user", "-group", "-links", "-inum", "-mtime",
+    "-mmin", "-newer", "-anewer", "-cnewer", "-maxdepth", "-mindepth",
 }
 # Words to skip when locating the head of a segment.
 PREFIXES = {
@@ -50,9 +55,7 @@ PREFIXES = {
 }
 
 ALTERNATIVE = (
-    "Use the Grep tool to search file contents or the Glob tool to find files by "
-    "name: both use ripgrep, skip ignored directories, and take a path or glob to "
-    "narrow the walk. To stay in Bash, name a subdirectory or the files to search."
+    "Name a subdirectory or the files to search, and leave ignore rules on."
 )
 
 
@@ -94,9 +97,51 @@ def split_segments(command):
     return segments
 
 
+def split_words(segment):
+    """Split a segment on whitespace outside quotes, keeping quote characters."""
+    words, buf, quote, i, n = [], [], None, 0, len(segment)
+    while i < n:
+        ch = segment[i]
+        if quote:
+            if ch == "\\" and quote == '"' and i + 1 < n:
+                buf.append(segment[i : i + 2])
+                i += 2
+                continue
+            if ch == quote:
+                quote = None
+            buf.append(ch)
+            i += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        if ch == "\\" and i + 1 < n:
+            buf.append(segment[i : i + 2])
+            i += 2
+            continue
+        if ch.isspace():
+            if buf:
+                words.append("".join(buf))
+                buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    if buf:
+        words.append("".join(buf))
+    return words
+
+
+def unquote(word):
+    """Remove shell quote characters, so `"."` and `'.'` both compare equal to `.`."""
+    return word.replace("'", "").replace('"', "")
+
+
 def resolve_head(segment):
     """Return (program name, its arguments) for a segment, or (None, [])."""
-    words = segment.split()
+    words = [unquote(word) for word in split_words(segment)]
     saw_prefix = False
     while words:
         word = words[0]
@@ -150,6 +195,12 @@ def is_broad(root):
     return any(part in HEAVY_DIRS for part in stripped.split("/") if part)
 
 
+def backticked(roots):
+    """Join roots for a message, each in backticks, so a root of `.` is not read
+    as the sentence period."""
+    return " ".join(f"`{root}`" for root in roots)
+
+
 def bounded_by_depth(args):
     """True when a maxdepth option caps the walk."""
     for i, arg in enumerate(args):
@@ -196,7 +247,7 @@ def verdict(segment):
         if bounded_by_depth(args):
             return None
         if any(is_broad(root) for root in roots):
-            return f"`{head}` walks the whole tree from {' '.join(roots)}."
+            return f"`{head}` walks the whole tree from {backticked(roots)}."
         return None
     if head in RECURSIVE_SEARCH or head in OPTIONAL_RECURSIVE_SEARCH:
         if head in OPTIONAL_RECURSIVE_SEARCH and not grep_is_recursive(args):
@@ -204,12 +255,14 @@ def verdict(segment):
         unrestricted = [arg for arg in args if defeats_ignore_rules(arg)]
         if unrestricted:
             return f"`{head} {unrestricted[0]}` searches ignored directories."
+        if bounded_by_depth(args):
+            return None  # the walk is capped, so its root does not matter
         drop_first = not any(a in ("-e", "-f", "--regexp", "--file") for a in args)
         roots = positionals(args, drop_first=drop_first)
         if not roots:
             return f"`{head}` searches the whole working tree when no path is given."
         if any(is_broad(root) for root in roots):
-            return f"`{head}` walks the whole tree from {' '.join(roots)}."
+            return f"`{head}` walks the whole tree from {backticked(roots)}."
     return None
 
 
