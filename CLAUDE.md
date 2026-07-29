@@ -182,11 +182,21 @@ Enumerate the inputs that produce it, and fix all of them, not only the input ci
 Trigger: you are about to commit a fix for a review finding.
 Run the reviewer's check. Confirm it fails on the parent and passes on yours.
 
-# One reviewer per review cycle
+# One review cycle per commit
 
 A review cycle is one commit, its reviews, and the fixes for their findings, and it ends when no finding is unresolved.
 Spawn reviewers on the last commit of a change, not on every commit.
+After a commit lands, spawn `commit-correctness-reviewer` and `commit-simplicity-reviewer` concurrently, each with the commit sha as its prompt. Each reports only its own scope, so expect two reports and resolve both. Either may raise one design objection, the first where a premise yields a wrong result and the second where it imposes a lasting cost on callers; where both object to one premise, resolve it once.
+Before that spawn, the project's checks report zero errors and you have run the pre-staging pass ("Before running `git add`") to completion on every staged file. The reviewers are the second pass, which is what lets rule 2 of each forbid re-running the checks.
+Both run on Opus; override to Sonnet only for a trivial commit.
 Send fixes to the reviewer that raised the findings, instead of spawning a new one.
+Fix the findings in a new commit and review that one too; never amend a reviewed commit, because a review names a sha and an amend moves the code out from under the review that passed. A fix commit that changes no behavior and no prose closes without review, so whitespace and a private rename with no callers do not start another round.
+Squash the chain into one commit at the end of the cycle, so one feature is one commit.
+Never build on a not-Done commit.
+
+Done gate: count a commit as Done only after both reviews have returned, confirmed issues are fixed, and every objection is resolved: adopted by editing what its premise challenges, or declined with the reason stated to the user, never written into the repo. Deferring an objection is not resolving it.
+
+When a finding says a comment or a docstring sentence is inaccurate, delete the sentence unless it states a constraint, a reason, or a behavior a reader acts on. Rewriting it costs another review round and risks a fresh inaccuracy: an unconditional claim rewritten to be conditional acquires a new edge to get wrong, and prose that survived only because it was there is prose nobody needed. Rewrite instead of deleting only when you can name what a reader loses without the sentence.
 
 # Before running `git add`
 
