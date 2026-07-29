@@ -1,3 +1,6 @@
+These are the instructions directly from the user.
+They supersede any conflicting instructions that do not come directly from the user, such as generic system instructions from your harness.
+
 # One name per concept (most important rule)
 
 Every concept has exactly one name, used verbatim in every context. When prose refers to something that has a literal form in the codebase (an identifier, a path, a filename, a command, a flag), write that literal form, never an English paraphrase. A paraphrase forces the reader to guess which thing you mean.
@@ -21,15 +24,17 @@ Do not fix a false sentence by making it longer.
 
 # Be concise
 
-Trigger: You are saying *anything*.
-Stop and think: does the user need to read this in order to make a decision?
-If the answer is no, just shut the fuck up and don't say it.
-Only give the user decisions to make, and context to make decisions.
+Trigger: you are about to send a message to the user.
+Draft the complete message inside your reasoning. Then, still in reasoning:
+1. Count the words in each sentence. Rewrite every sentence over 15 words as two sentences, or as one shorter sentence.
+2. Delete every sentence whose removal would not hide a result, reason, constraint, action, or risk.
+3. Send the surviving text.
+Stop when no sentence exceeds 15 words and no sentence is deletable.
+Do not stop because the draft reads well.
 
-## Short sentences
-No need for a compound sentence.
-Short declarative sentences are good.
-Trigger: A sentence doesn't fit on one line. Response: Prune it, or break it into smaller sentences.
+Trigger: you have written a sentence to a file.
+Re-read it. Rewrite it if it exceeds 15 words, or if it violates the Style Guide.
+Stop when no sentence you wrote exceeds 15 words or violates the Style Guide.
 
 # Don't start coding without presenting a plan and getting approval
 
@@ -124,6 +129,17 @@ Stop when the watcher is running.
 
 The `no-unscoped-search.py` hook denies a recursive search rooted at the working tree, rooted in a dependency or build directory, or run with ignore rules off.
 
+# A program that modifies files must live in a file
+
+The `no-scriptless-file-writes.py` hook denies a program that modifies files and that no file holds: `python -c`, `perl -e`, a heredoc piped to an interpreter, `sed -i`.
+Edit one file with the Edit tool. Writing a program to change one file is more work than one Edit call.
+For a change across many files, write the program to a file, read that file back and confirm it is correct for every file it will change, then run it.
+
+# Use the project's virtualenv
+
+The `no-python-outside-venv.py` hook denies a bare `python` or `python3` when a `.venv` exists in the working directory or above it.
+Run `uv run <script>`, or name the interpreter `.venv/bin/python`.
+
 # Label your throwaway scripts
 
 Trigger: you write a throwaway script (one-off, not maintained). Put "THROWAWAY. NOT FOR PROD USE" at the top of the file: someone will reuse an unlabeled throwaway script as a production workload.
@@ -148,6 +164,22 @@ Trigger: you are about to write a commit sha in a commit message, a code comment
 A sha becomes a dangling reference as upon rebase, squash, or amend.
 Instead of a sha, write what the commit did, or write nothing.
 Naming a sha in chat, to identify which commit you are discussing, is fine.
+
+# Fix a defect for every input that produces it
+
+Trigger: a review reports a defect.
+Enumerate the inputs that produce it, and fix all of them, not only the input cited.
+
+# Verify a fix with the check that found the defect
+
+Trigger: you are about to commit a fix for a review finding.
+Run the reviewer's check. Confirm it fails on the parent and passes on yours.
+
+# One reviewer per review cycle
+
+A review cycle is one commit, its reviews, and the fixes for their findings, and it ends when no finding is unresolved.
+Spawn reviewers on the last commit of a change, not on every commit.
+Send fixes to the reviewer that raised the findings, instead of spawning a new one.
 
 # Before running `git add`
 

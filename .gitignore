@@ -18,3 +18,6 @@
 !skills/**
 !output-styles/
 !output-styles/**
+
+# Byte-compiled modules, regenerated whenever a hook imports its neighbours.
+__pycache__/

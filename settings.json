@@ -5,13 +5,7 @@
   "attribution": {
     "sessionUrl": false
   },
-  "model": "fable",
-  "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true
-  },
-  "effortLevel": "high",
-  "autoMemoryEnabled": false,
-  "skipWorkflowUsageWarning": true,
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -20,21 +14,40 @@
           {
             "type": "command",
             "command": "python3",
-            "args": ["/Users/bunbie/.claude/hooks/no-unscoped-search.py"],
+            "args": [
+              "/Users/bunbie/.claude/hooks/no-unscoped-search.py"
+            ],
             "timeout": 10,
             "statusMessage": "Checking search scope"
           },
           {
             "type": "command",
             "command": "python3",
-            "args": ["/Users/bunbie/.claude/hooks/no-unwritten-python.py"],
+            "args": [
+              "/Users/bunbie/.claude/hooks/no-scriptless-file-writes.py"
+            ],
             "timeout": 10,
-            "statusMessage": "Checking for Python file edits"
+            "statusMessage": "Checking that file-writing code lives in a file"
+          },
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "/Users/bunbie/.claude/hooks/no-python-outside-venv.py"
+            ],
+            "timeout": 10,
+            "statusMessage": "Checking the interpreter against the project venv"
           }
         ]
       }
     ]
   },
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "effortLevel": "high",
+  "autoMemoryEnabled": false,
+  "skipWorkflowUsageWarning": true,
   "theme": "auto",
   "autoCompactEnabled": true,
   "agentPushNotifEnabled": true

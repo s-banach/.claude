@@ -10,12 +10,14 @@ build output, or when a flag switches the walker's ignore rules off. A search
 given a subdirectory, named files, a depth cap, or a pipe is left alone.
 """
 
-import json
-import re
-import sys
-
-# A redirection, with its target attached (`2>log`) or in the next argument (`2> log`).
-REDIRECT = re.compile(r"^(?:\d*|&)(?:>>|>|<<|<)(?P<target>.*)$")
+from shell_parsing import (
+    deny,
+    iter_arguments,
+    program_name,
+    read_input,
+    resolve_head,
+    split_segments,
+)
 
 # Recursive by default: naming no path searches the whole tree.
 RECURSIVE_SEARCH = {"rg", "ripgrep", "ag", "ack", "ack-grep"}
@@ -48,116 +50,10 @@ VALUE_OPTIONS = {
     "-size", "-perm", "-user", "-group", "-links", "-inum", "-mtime",
     "-mmin", "-newer", "-anewer", "-cnewer", "-maxdepth", "-mindepth",
 }
-# Words to skip when locating the head of a segment.
-PREFIXES = {
-    "sudo", "command", "time", "nice", "nohup", "builtin", "exec", "xargs",
-    "then", "do", "else",
-}
 
 ALTERNATIVE = (
     "Name a subdirectory or the files to search, and leave ignore rules on."
 )
-
-
-def split_segments(command):
-    """Yield the command's segments, splitting on shell operators outside quotes."""
-    segments, buf, quote, i, n = [], [], None, 0, len(command)
-    while i < n:
-        ch = command[i]
-        if quote:
-            if ch == "\\" and quote == '"' and i + 1 < n:
-                buf.append(command[i : i + 2])
-                i += 2
-                continue
-            if ch == quote:
-                quote = None
-            buf.append(ch)
-            i += 1
-            continue
-        if ch in ("'", '"'):
-            quote = ch
-            buf.append(ch)
-            i += 1
-            continue
-        if ch == "\\" and i + 1 < n:
-            buf.append(command[i : i + 2])
-            i += 2
-            continue
-        if command[i : i + 2] in ("||", "&&", "|&", "$("):
-            segments.append("".join(buf))
-            buf, i = [], i + 2
-            continue
-        if ch in "|;\n&`()":
-            segments.append("".join(buf))
-            buf, i = [], i + 1
-            continue
-        buf.append(ch)
-        i += 1
-    segments.append("".join(buf))
-    return segments
-
-
-def split_words(segment):
-    """Split a segment on whitespace outside quotes, keeping quote characters."""
-    words, buf, quote, i, n = [], [], None, 0, len(segment)
-    while i < n:
-        ch = segment[i]
-        if quote:
-            if ch == "\\" and quote == '"' and i + 1 < n:
-                buf.append(segment[i : i + 2])
-                i += 2
-                continue
-            if ch == quote:
-                quote = None
-            buf.append(ch)
-            i += 1
-            continue
-        if ch in ("'", '"'):
-            quote = ch
-            buf.append(ch)
-            i += 1
-            continue
-        if ch == "\\" and i + 1 < n:
-            buf.append(segment[i : i + 2])
-            i += 2
-            continue
-        if ch.isspace():
-            if buf:
-                words.append("".join(buf))
-                buf = []
-            i += 1
-            continue
-        buf.append(ch)
-        i += 1
-    if buf:
-        words.append("".join(buf))
-    return words
-
-
-def unquote(word):
-    """Remove shell quote characters, so `"."` and `'.'` both compare equal to `.`."""
-    return word.replace("'", "").replace('"', "")
-
-
-def resolve_head(segment):
-    """Return (program name, its arguments) for a segment, or (None, [])."""
-    words = [unquote(word) for word in split_words(segment)]
-    saw_prefix = False
-    while words:
-        word = words[0]
-        if "=" in word.split("/")[0] and not word.startswith("="):
-            words = words[1:]  # leading VAR=value assignment
-            continue
-        if word in PREFIXES:
-            words, saw_prefix = words[1:], True
-            continue
-        if word.startswith("-") and saw_prefix:
-            words = words[1:]  # options belonging to a skipped prefix word
-            continue
-        break
-    if not words:
-        return None, []
-    return words[0].rsplit("/", 1)[-1], words[1:]
 
 
 def positionals(args, drop_first):
@@ -166,20 +62,11 @@ def positionals(args, drop_first):
     Redirections and their targets are not search paths, so `grep -r x src/ 2>log`
     is scoped to `src/`.
     """
-    found, skip = [], False
-    for arg in args:
-        if skip:
-            skip = False
-            continue
-        redirect = REDIRECT.match(arg)
-        if redirect:
-            skip = not redirect.group("target")
-            continue
+    found = []
+    for arg in iter_arguments(args, VALUE_OPTIONS):
         if arg == "--":
             continue
         if arg.startswith("-") and arg != "-":
-            if arg in VALUE_OPTIONS:
-                skip = True
             continue
         found.append(arg)
     if drop_first and found:
@@ -237,9 +124,10 @@ def grep_is_recursive(args):
 
 def verdict(segment):
     """Return the reason this segment is denied, or None."""
-    head, args = resolve_head(segment)
-    if head is None:
+    word, args = resolve_head(segment)
+    if word is None:
         return None
+    head = program_name(word)
     if head == "git" and args and args[0] == "grep":
         return None  # searches tracked files only, so no dependency directory is walked
     if head in WALKERS:
@@ -267,27 +155,11 @@ def verdict(segment):
 
 
 def main():
-    try:
-        payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, ValueError):
-        sys.exit(0)
-    command = (payload.get("tool_input") or {}).get("command") or ""
+    command, _ = read_input()
     for segment in split_segments(command):
         reason = verdict(segment)
         if reason:
-            print(
-                json.dumps(
-                    {
-                        "hookSpecificOutput": {
-                            "hookEventName": "PreToolUse",
-                            "permissionDecision": "deny",
-                            "permissionDecisionReason": f"{reason} {ALTERNATIVE}",
-                        }
-                    }
-                )
-            )
-            sys.exit(0)
-    sys.exit(0)
+            deny(f"{reason} {ALTERNATIVE}")
 
 
 if __name__ == "__main__":

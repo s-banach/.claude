@@ -5,10 +5,9 @@ Run `python3 no-unscoped-search-test.py` from this directory after editing the h
 Each case is (command, denied), where denied is True when the hook must block it.
 """
 
-import json
-import subprocess
-import sys
 from pathlib import Path
+
+from hook_testing import check, report
 
 HOOK = str(Path(__file__).with_name("no-unscoped-search.py"))
 
@@ -74,27 +73,16 @@ CASES = [
     ("./scripts/lint.sh", False),
     ("echo 'the word grep in a string'", False),
     ('python3 -c "s = \\"a | grep -r b\\"; print(s)"', False),
+    # `command -v` prints where a program lives and runs nothing.
+    ("command -v rg", False),
+    ("command -V grep", False),
+    ("command -p rg pattern .", True),
+    ("command rg -v pattern .", True),
 ]
 
 
-def verdict(command):
-    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
-    result = subprocess.run(
-        [sys.executable, HOOK], input=payload, capture_output=True, text=True
-    )
-    return bool(result.stdout.strip())
-
-
 def main():
-    failures = 0
-    for command, denied in CASES:
-        got = verdict(command)
-        if got != denied:
-            failures += 1
-            want = "DENY" if denied else "allow"
-            print(f"FAIL want {want}: {command}")
-    print(f"{len(CASES) - failures}/{len(CASES)} cases pass")
-    sys.exit(1 if failures else 0)
+    report(check(HOOK, CASES), len(CASES))
 
 
 if __name__ == "__main__":
