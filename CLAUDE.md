@@ -61,6 +61,13 @@ Trigger: a request contradicts itself, or contradicts an instruction already in 
 Name the contradiction and ask which way to go, before writing code.
 Do not invent an exception that narrows the request, and do not coin a name for one.
 
+# Code smells
+
+Trigger: you are about to write one of these: `**kwargs` unpacking, `Any` for typing, `cast`, or unpacking data out of one container and back into another.
+Redesign so the construct is unnecessary.
+Where every redesign you can name is worse, keep the construct and write a comment naming the redesign you rejected and why.
+Stop when the construct is gone, or a comment names the rejected redesign.
+
 # Style Guide
 
 Applies to all prose you write: chat, code comments, docstrings, docs, commits, PRs, reports, headings, tables, and examples. Do not match the style of surrounding text; follow these rules even when the context differs.
@@ -101,7 +108,7 @@ Include the local context a reader needs without opening unrelated files.
 ## Docstrings
 Assume the reader sees the signature. Do not restate type annotations. Document only meanings, sources, constraints, or behaviors the types do not show.
 While writing a docstring or comment, if you type an identifier that is not defined in the file you are editing, open its definition before finishing the sentence, or cut the reference.
-Write a behavior claim only after identifying its source; behavior claims and their sources are defined in "Before running `git add`", full tier steps 3 and 4.
+Write a behavior claim only after naming the evidence that it is true.
 
 # Check before writing that something is unavailable or impossible
 
@@ -194,7 +201,7 @@ Pick one tier per path:
 **Full review (default, and every new file).** Run `git diff -W <path>`. `-W` prints each hunk with its whole enclosing function, so open the file only when a hunk depends on code outside that function. A new file's `git diff` is empty: read the whole file. Write down every objection you find, then fix each one or record why it stands. Stage when no objection is unresolved.
 
 ## Commit gate
-Commit only when `git diff --name-only --cached` lists exactly the ledger's done paths. Do not mark an entry done because the file reads well.
+Commit only when `git diff --name-only --cached` lists exactly the paths you finished a tier on. Do not treat a path as finished because the file reads well.
 
 # Keep durable notes in a CLAUDE.md, not in auto-memory
 
