@@ -201,9 +201,9 @@ Pick one tier per path:
 ## Commit gate
 Commit only when `git diff --name-only --cached` lists exactly the paths you finished a tier on. Do not treat a path as finished because the file reads well.
 
-# One review cycle per commit
+# One review cycle per change
 
-A review cycle is one commit, its reviews, and the fixes for their findings, and it ends when no finding is unresolved.
+A review cycle covers one change: its first commit, the fix commits its reviews produce, and their reviews. It ends at the squash. The two reviewer agents live for exactly that span; the next change spawns a new pair.
 Spawn reviewers on the last commit of a change, not on every commit.
 After a commit lands, spawn `commit-correctness-reviewer` and `commit-simplicity-reviewer` concurrently, each with the commit sha as its prompt. Each reports only its own scope, so expect two reports and resolve both. Either may raise one design objection, the first where a premise yields a wrong result and the second where it imposes a lasting cost on callers; where both object to one premise, resolve it once.
 Before that spawn, the project's checks report zero errors and you have run the pre-staging pass ("Before running `git add`") to completion on every staged file. The reviewers are the second pass, which is what lets rule 2 of each forbid re-running the checks.
