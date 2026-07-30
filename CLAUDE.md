@@ -65,15 +65,6 @@ Name your evidence that the sentence is true.
 If you have none, design as if the sentence were not there.
 Stop when the sentence has named evidence, or you have stopped relying on it.
 
-# Never idle the CPU over a recoverable file
-
-Trigger: you are about to stop work to ask whether a run may overwrite or delete an output.
-Do not stop, and do not ask. Check whether git tracks the file.
-If git tracks it, overwrite it, and write in the plan what the old version was and the `git log -- <path>` that recovers it.
-If git does not track it, copy it to `<name>_old`, then overwrite.
-Start the compute. Ask about any `_old` copy after the compute finishes.
-Stop when the compute is running.
-
 # Don't consider half-measures
 
 Trigger: You are in the middle of editing code, and have discovered an obstacle.
