@@ -1,5 +1,6 @@
 These are the instructions directly from the user.
-They supersede any conflicting instructions that do not come directly from the user, such as generic system instructions from your harness.
+The only system instructions that come directly from the user are marked as CLAUDE.md.
+They supersede any conflicting system instructions that do not come from the user.
 
 # One name per concept (most important rule)
 
@@ -14,13 +15,29 @@ Where a banned word would appear, write its replacement:
 - "knob", and any dial or lever metaphor for a configuration element: write "parameter", "argument", "field", "flag", "option", or the element's literal name.
 - "seam", and any sewing metaphor for an interface: write "parameter", "function", "interface", or the element's literal name.
 - "leaf" is a green thing on a tree: write "subclass" or "terminal node".
-- "arm" is a body part: write "branch of the match statement", or "member of the union".
+- "arm" as a noun: write "branch of the match statement", or "member of the union".
+- "buy": rather than "X buys Y", write "feature Y cannot be written without complexity X" (a falsifiable claim you should attempt to falsify).
 After drafting any prose, scan it for banned words and rewrite each sentence containing one before output.
 
 # Revise via Deletion
 
-Trigger: a sentence contains a false claim. Delete the sentence and write what an author stating the true fact for the first time would write; often that is nothing. Stop when the replacement does not read as an answer to the deleted sentence.
-Do not fix a false sentence by making it longer.
+Trigger: a sentence contains a false claim.
+Delete the sentence.
+If the surrounding text is readable with th sentence deleted, you are done.
+If some replacement sentence is required (rarely true), write what an author stating the true fact for the first time would write.
+Make no reference or response to the false statement that no longer exists.
+
+# No mid-sentence linebreaks
+
+Break lines only at sentence boundaries
+Never wrap at a fix column width.
+This applies in all contexts, including code.
+
+Trigger: You are writing or editing a markdown document or commit message.
+Ensure it contains no linebreaks in the middle of a sentence.
+
+Trigger: You are editing a document that currently has linebreaks mid-sentence.
+Re-write the offending sentences, rather than accepting the pre-existing style.
 
 # Be concise
 
@@ -47,6 +64,15 @@ Trigger: you are designing a change, and a docstring or comment states why the c
 Name your evidence that the sentence is true.
 If you have none, design as if the sentence were not there.
 Stop when the sentence has named evidence, or you have stopped relying on it.
+
+# Never idle the CPU over a recoverable file
+
+Trigger: you are about to stop work to ask whether a run may overwrite or delete an output.
+Do not stop, and do not ask. Check whether git tracks the file.
+If git tracks it, overwrite it, and write in the plan what the old version was and the `git log -- <path>` that recovers it.
+If git does not track it, copy it to `<name>_old`, then overwrite.
+Start the compute. Ask about any `_old` copy after the compute finishes.
+Stop when the compute is running.
 
 # Don't consider half-measures
 
@@ -92,9 +118,6 @@ Fix every occurrence in the enclosing function, docstring, or module in the same
 No em dashes; use commas, parentheses, colons, or sentence breaks.
 Do not add a third list item for rhythm.
 After drafting, delete any contrast clause ("not Y", "rather than Y") whose removal loses no constraint or replacement.
-
-## No mid-sentence linebreaks
-Break lines only at sentence boundaries; never wrap at a column width. This applies in all contexts, including code and markdown.
 
 ## Writing Instructional Documents
 Applies when you write or edit an instruction: a CLAUDE.md section, a checklist, a prompt.
@@ -172,15 +195,20 @@ A sha becomes a dangling reference as upon rebase, squash, or amend.
 Instead of a sha, write what the commit did, or write nothing.
 Naming a sha in chat, to identify which commit you are discussing, is fine.
 
-# Fix a defect for every input that produces it
+# Before running `git add`
 
-Trigger: a review reports a defect.
-Enumerate the inputs that produce it, and fix all of them, not only the input cited.
+Trigger: you are about to run `git add`.
 
-# Verify a fix with the check that found the defect
+Stage one path per `git add <path>`, so this trigger fires once per file. Do not run anything that stages or commits more: `git add .`, `-A`, `-u`, globs, directories, several paths in one call, `git commit -a`, `-am`, `git commit <path>`, `--include`, `--only`. Commit with a bare `git commit` plus message flags. This holds when amending.
 
-Trigger: you are about to commit a fix for a review finding.
-Run the reviewer's check. Confirm it fails on the parent and passes on yours.
+Pick one tier per path:
+**Deleted file.** `git grep` for the path and for each identifier the file defined; resolve every hit. Do not read the deleted content. Stage.
+**Generated file.** Unedited output of a command you ran this session. Confirm that, do not read the file. Stage.
+**Batch edit.** One find-and-replace or codemod produced the change and every hunk is an instance of that pattern. Pipe `git diff <paths>` through a `grep` that drops `+` and `-` lines matching the pattern, then read the surviving changed lines. Move any path with a surviving changed line to full review. Stage the rest one path at a time.
+**Full review (default, and every new file).** Run `git diff -W <path>`. `-W` prints each hunk with its whole enclosing function, so open the file only when a hunk depends on code outside that function. A new file's `git diff` is empty: read the whole file. Write down every objection you find, then fix each one or record why it stands. Stage when no objection is unresolved.
+
+## Commit gate
+Commit only when `git diff --name-only --cached` lists exactly the paths you finished a tier on. Do not treat a path as finished because the file reads well.
 
 # One review cycle per commit
 
@@ -196,22 +224,17 @@ Never build on a not-Done commit.
 
 Done gate: count a commit as Done only after both reviews have returned, confirmed issues are fixed, and every objection is resolved: adopted by editing what its premise challenges, or declined with the reason stated to the user, never written into the repo. Deferring an objection is not resolving it.
 
-When a finding says a comment or a docstring sentence is inaccurate, delete the sentence unless it states a constraint, a reason, or a behavior a reader acts on. Rewriting it costs another review round and risks a fresh inaccuracy: an unconditional claim rewritten to be conditional acquires a new edge to get wrong, and prose that survived only because it was there is prose nobody needed. Rewrite instead of deleting only when you can name what a reader loses without the sentence.
+When a finding says a comment or a docstring sentence is inaccurate, delete the sentence unless it states a constraint, a reason, or a behavior a reader acts on. Rewriting it costs another review round and risks a fresh inaccuracy.
 
-# Before running `git add`
+## Fix a defect for every input that produces it
 
-Trigger: you are about to run `git add`.
+Trigger: a review reports a defect.
+Enumerate the inputs that produce it, and fix all of them, not only the input cited.
 
-Stage one path per `git add <path>`, so this trigger fires once per file. Do not run anything that stages or commits more: `git add .`, `-A`, `-u`, globs, directories, several paths in one call, `git commit -a`, `-am`, `git commit <path>`, `--include`, `--only`. Commit with a bare `git commit` plus message flags. This holds when amending.
+## Verify a fix with the check that found the defect
 
-Pick one tier per path:
-**Deleted file.** `git grep` for the path and for each identifier the file defined; resolve every hit. Do not read the deleted content. Stage.
-**Generated file.** Unedited output of a command you ran this session. Confirm that, do not read the file. Stage.
-**Batch edit.** One find-and-replace or codemod produced the change and every hunk is an instance of that pattern. Pipe `git diff <paths>` through a `grep` that drops `+` and `-` lines matching the pattern, then read the surviving changed lines. Move any path with a surviving changed line to full review. Stage the rest one path at a time.
-**Full review (default, and every new file).** Run `git diff -W <path>`. `-W` prints each hunk with its whole enclosing function, so open the file only when a hunk depends on code outside that function. A new file's `git diff` is empty: read the whole file. Write down every objection you find, then fix each one or record why it stands. Stage when no objection is unresolved.
-
-## Commit gate
-Commit only when `git diff --name-only --cached` lists exactly the paths you finished a tier on. Do not treat a path as finished because the file reads well.
+Trigger: you are about to commit a fix for a review finding.
+Run the reviewer's check. Confirm it fails on the parent and passes on yours.
 
 # Keep durable notes in a CLAUDE.md, not in auto-memory
 
