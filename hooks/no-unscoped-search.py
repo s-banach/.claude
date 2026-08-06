@@ -11,6 +11,9 @@ given a subdirectory, named files, a depth cap, or a pipe is left alone.
 """
 
 from shell_parsing import (
+    OPTIONAL_RECURSIVE_SEARCH,
+    RECURSIVE_SEARCH,
+    WALKERS,
     deny,
     iter_arguments,
     program_name,
@@ -18,12 +21,6 @@ from shell_parsing import (
     resolve_head,
     split_segments,
 )
-
-# Recursive by default: naming no path searches the whole tree.
-RECURSIVE_SEARCH = {"rg", "ripgrep", "ag", "ack", "ack-grep"}
-# Recursive only with a flag, and then with no ignore rules at all.
-OPTIONAL_RECURSIVE_SEARCH = {"grep", "egrep", "fgrep", "rgrep", "zgrep"}
-WALKERS = {"find", "fd", "fdfind"}
 
 # Roots that mean "everything from here".
 BROAD_ROOTS = {".", "./", "/", "~", "~/", "$HOME", "${HOME}", "*"}

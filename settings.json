@@ -37,6 +37,15 @@
             ],
             "timeout": 10,
             "statusMessage": "Checking the interpreter against the project venv"
+          },
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "/Users/bunbie/.claude/hooks/no-truncated-search.py"
+            ],
+            "timeout": 10,
+            "statusMessage": "Checking that a search's output is not cut"
           }
         ]
       }

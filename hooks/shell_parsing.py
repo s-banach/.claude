@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Reading a Bash command, and answering the PreToolUse caller, shared by the hooks here.
 
-Each hook decides what a command means; this module decides where the command's
-parts begin and end, and how a decision reaches the PreToolUse caller. A hook
-imports it by name because Python puts the running script's directory first on
-`sys.path`.
+Each hook decides what a command means.
+This module decides where the command's parts begin and end, which programs search a tree, and how a decision reaches the PreToolUse caller.
+A hook imports it by name because Python puts the running script's directory first on `sys.path`.
 """
 
 import json
@@ -20,9 +19,18 @@ PREFIXES = {
     "env", "then", "do", "else",
 }
 
+# Recursive by default: naming no path searches the whole tree.
+RECURSIVE_SEARCH = {"rg", "ripgrep", "ag", "ack", "ack-grep"}
+# Recursive only with a flag, and then with no ignore rules at all.
+OPTIONAL_RECURSIVE_SEARCH = {"grep", "egrep", "fgrep", "rgrep", "zgrep"}
+WALKERS = {"find", "fd", "fdfind"}
 
-def split_segments(command):
-    """Yield the command's segments, splitting on shell operators outside quotes."""
+
+def scan_segments(command):
+    """Return [(segment, the operator that ended it)], with "" ending the last one.
+
+    A caller that needs to know whether one segment's output reaches the next one reads the operator, since only a pipe passes output along.
+    """
     segments, buf, quote, i, n = [], [], None, 0, len(command)
     while i < n:
         ch = command[i]
@@ -45,18 +53,43 @@ def split_segments(command):
             buf.append(command[i : i + 2])
             i += 2
             continue
-        if command[i : i + 2] in ("||", "&&", "|&", "$("):
-            segments.append("".join(buf))
+        if ch == "&" and ((buf and buf[-1] in "><") or command[i + 1 : i + 2] == ">"):
+            buf.append(ch)  # part of a redirection (`2>&1`, `<&0`, `&>log`), not an operator
+            i += 1
+            continue
+        pair = command[i : i + 2]
+        if pair in ("||", "&&", "|&", "$("):
+            segments.append(("".join(buf), pair))
             buf, i = [], i + 2
             continue
         if ch in "|;\n&`()":
-            segments.append("".join(buf))
+            segments.append(("".join(buf), ch))
             buf, i = [], i + 1
             continue
         buf.append(ch)
         i += 1
-    segments.append("".join(buf))
+    segments.append(("".join(buf), ""))
     return segments
+
+
+def split_segments(command):
+    """Return the command's segments, splitting on shell operators outside quotes."""
+    return [segment for segment, _ in scan_segments(command)]
+
+
+def split_pipelines(command):
+    """Return each pipeline in the command as its list of segments, in order.
+
+    A pipeline is a run of segments joined by `|` or `|&`, so each segment in one list feeds its output to the segments after it.
+    Every other operator ends the pipeline, because it passes no output along.
+    """
+    pipelines, current = [], []
+    for segment, operator in scan_segments(command):
+        current.append(segment)
+        if operator not in ("|", "|&"):
+            pipelines.append(current)
+            current = []
+    return pipelines
 
 
 def split_words(segment):
@@ -179,10 +212,8 @@ def iter_arguments(args, value_flags=()):
 def redirects_stdin_from_file(args):
     """True when a `< file` redirection gives the command its stdin.
 
-    The target follows in the next argument when it is not attached, as in
-    `< file`. A target starting with `&` names another descriptor rather than a
-    file, and `split_segments` breaks on `&`, so `<&0` reaches here as a `<`
-    with nothing after it; neither spelling points stdin at a file.
+    The target follows in the next argument when it is not attached, as in `< file`.
+    A target starting with `&` names another descriptor rather than a file, so `<&0` does not point stdin at a file.
     """
     for index, arg in enumerate(args):
         redirect = REDIRECT.match(arg)

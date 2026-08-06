@@ -170,6 +170,11 @@ Stop when the watcher is running.
 
 The `no-unscoped-search.py` hook denies a recursive search rooted at the working tree, rooted in a dependency or build directory, or run with ignore rules off.
 
+# Never cut a search's output
+
+The `no-truncated-search.py` hook denies `head` and `tail` downstream of a search in the same pipeline.
+Narrow the search until its whole output fits, or count the matches instead of listing them.
+
 # A program that modifies files must live in a file
 
 The `no-scriptless-file-writes.py` hook denies a program that modifies files and that no file holds: `python -c`, `perl -e`, a heredoc piped to an interpreter, `sed -i`.
