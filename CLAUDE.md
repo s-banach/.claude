@@ -230,7 +230,7 @@ Commit only when `git diff --name-only --cached` lists exactly the paths you fin
 
 A review cycle covers one change: its first commit, the fix commits its reviews produce, and their reviews. It ends at the squash. The two reviewer agents live for exactly that span; the next change spawns a new pair.
 Spawn reviewers on the last commit of a change, not on every commit.
-After a commit lands, spawn `commit-correctness-reviewer` and `commit-simplicity-reviewer` concurrently, each with the commit sha as its prompt. Each reports only its own scope, so expect two reports and resolve both. Either may raise one design objection, the first where a premise yields a wrong result and the second where it imposes a lasting cost on callers; where both object to one premise, resolve it once.
+After a commit lands, spawn `commit-correctness-reviewer` and `commit-simplicity-reviewer` concurrently, each with a prompt naming the commit sha and, in one sentence, the change's root goal. Each reports only its own scope, so expect two reports and resolve both. Either may raise one design objection: both where the diff treats a symptom of the root goal, the first also where a premise yields a wrong result, and the second also where it imposes a lasting cost on callers; where both object to one premise, resolve it once.
 Before that spawn, the project's checks report zero errors and you have run the pre-staging pass ("Before running `git add`") to completion on every staged file. The reviewers are the second pass, which is what lets rule 2 of each forbid re-running the checks.
 Both run on Opus; override to Sonnet only for a trivial commit.
 Send fixes to the reviewer that raised the findings, instead of spawning a new one.
@@ -251,6 +251,14 @@ Enumerate the inputs that produce it, and fix all of them, not only the input ci
 
 Trigger: you are about to commit a fix for a review finding.
 Run the reviewer's check. Confirm it fails on the parent and passes on yours.
+
+## Check a proposed sentence against its file before adopting it
+
+Trigger: you are writing a sentence into an instruction file, including text a reviewer proposed.
+Check it against the other sentences of its rule and file.
+A trigger you add must be reachable past the rule's gate.
+A scope claim must be true of every file it names.
+Stop when the sentence contradicts nothing you checked.
 
 # Keep durable notes in a CLAUDE.md, not in auto-memory
 
