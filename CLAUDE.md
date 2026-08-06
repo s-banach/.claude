@@ -15,7 +15,8 @@ Where a banned word would appear, write its replacement:
 - "knob", and any dial or lever metaphor for a configuration element: write "parameter", "argument", "field", "flag", "option", or the element's literal name.
 - "seam", and any sewing metaphor for an interface: write "parameter", "function", "interface", or the element's literal name.
 - "leaf" is a green thing on a tree: write "subclass" or "terminal node".
-- "arm" as a noun: write "branch of the match statement", or "member of the union".
+- "arm" as a noun: write "branch of the match statement", or "variant of TypeUnion".
+- "member" for anything but an enum member, which is Python's own word for it (`Enum.__members__`): write "variant of TypeUnion" for one type of a union, then bare "variant" once that scope has named the union; write "entry" for an element of a collection, "value" for one of a `Literal`'s values, and "attribute" for a class attribute.
 - "buy": rather than "X buys Y", write "feature Y cannot be written without complexity X" (a falsifiable claim you should attempt to falsify).
 After drafting any prose, scan it for banned words and rewrite each sentence containing one before output.
 
@@ -36,7 +37,7 @@ This applies in all contexts, including code.
 Trigger: You are writing or editing a markdown document or commit message.
 Ensure it contains no linebreaks in the middle of a sentence.
 
-Trigger: You are editing a document that currently has linebreaks mid-sentence.
+Trigger: You are editing a file that has linebreaks mid-sentence.
 Re-write the offending sentences, rather than accepting the pre-existing style.
 
 # Be concise
@@ -64,6 +65,14 @@ Trigger: you are designing a change, and a docstring or comment states why the c
 Name your evidence that the sentence is true.
 If you have none, design as if the sentence were not there.
 Stop when the sentence has named evidence, or you have stopped relying on it.
+
+# Write down every mistake before you continue
+
+Trigger: you make a mistake, or a review or the user corrects you.
+Write the correction into a CLAUDE.md now: `~/.claude/CLAUDE.md` for how you work, the project's CLAUDE.md for a fact about that project.
+State the rule that prevents the whole class of mistake. Do not record the incident.
+A mistake you fix only in the running session is one the next session makes again, because it starts with no memory of it.
+Stop when the note names an action, and you have deleted any sentence that only recounts what went wrong.
 
 # Don't consider half-measures
 
@@ -123,6 +132,17 @@ Include the local context a reader needs without opening unrelated files.
 Assume the reader sees the signature. Do not restate type annotations. Document only meanings, sources, constraints, or behaviors the types do not show.
 While writing a docstring or comment, if you type an identifier that is not defined in the file you are editing, open its definition before finishing the sentence, or cut the reference.
 Write a behavior claim only after naming the evidence that it is true.
+
+# Never claim a sweep is complete
+
+Trigger: you are about to write that every occurrence of something is fixed, found, or gone.
+The claim can land in chat, a commit message, or a report.
+Re-run the search with no `head`, no `tail`, and no result limit, and read every line it returns.
+A truncated list proves nothing about the lines it cut.
+Then write what you changed, not that nothing remains.
+Write no count of sites, files, or occurrences: a count is a second claim to get wrong, and it earns nothing a reader cannot get from the diff.
+Name the categories you edited instead.
+Stop when the sentence states the edits you made, or you have read an untruncated search to the last line.
 
 # Check before writing that something is unavailable or impossible
 
