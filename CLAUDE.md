@@ -131,6 +131,20 @@ Do not use a technical term except to refer to a precise technical concept, such
 Define technical terms at first use unless they are established project terms.
 Otherwise, use a plain description.
 
+## Write one claim per sentence
+
+Trigger: Claude is about to write a sentence that states more than one independently evaluable claim.
+Write each claim as a separate sentence.
+Stop when each sentence states one claim.
+
+## Name the actor and write the action as a verb
+
+Trigger: Claude is about to express an action as a noun.
+Write the actor as the subject.
+Write the action as a verb.
+For example, replace "The opinion does not explain whether the judge's split of the sentence is licensed by the statute." with "The opinion does not explain whether the judge may split the sentence under the statute."
+Stop when both instructions are satisfied.
+
 ## Fix a flagged term everywhere in its scope
 
 Trigger: a review flags an imprecise or conflated term.
