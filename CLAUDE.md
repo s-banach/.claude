@@ -215,37 +215,13 @@ Ensure that a crash near the end does not discard completed work.
 Estimate the runtime before launching and state the estimate.
 Select a mechanism appropriate for the process, such as a counter with a rate for a loop, streamed results for a worker pool, or output-file growth for a binary not controlled by Claude.
 
-## Start a durable completion watcher
+## Arm a completion watcher
 
-Trigger: Claude starts or resumes a process outside the foreground.
-Check `screen -ls` for the exact session name.
-Start a detached `screen` session when none exists.
-Make `screen` own the long process, PID-bound `caffeinate`, and completion watcher.
-Write each process's PID, command, and process-start identity to persistent files.
-Make the completion watcher write exit status and final log output to persistent status files.
-Run the launcher inside an `exec_command` session that remains active through completion.
-Run `Verify launch`.
-Call empty `write_stdin` with `yield_time_ms` set to `60000` until the session exits.
-Send the user one concise commentary update after each timeout.
-Inspect intermediate progress only when the user requests status.
-
-### Verify launch
-
-Trigger: another procedure runs `Verify launch`.
-Require current process records from `Start a durable completion watcher`.
-Verify each recorded PID, command, and process-start identity.
-Verify that `screen` is every recorded process's ancestor.
-Verify that `caffeinate` asserts for the long process PID.
-Verify that `screen -ls` shows the exact session name.
-Stop after reporting every launch check.
-
-### Inspect completion
-
-Trigger: either the user requests status or completion evidence appears.
-Read the persistent status files.
-If no exit status exists, run `Verify launch`.
-If an exit status exists, verify expected process termination and final log output.
-Stop after reporting the current state.
+Trigger: Claude waits on a process outside the foreground, including one inherited from an earlier session.
+Start a background watcher that blocks until the process exits, then prints its exit state and the end of its log.
+Start the background watcher in the turn when Claude begins waiting.
+A background watcher dies with its session.
+Stop when the background watcher is running.
 
 # Grep and Glob: Scope every search
 
