@@ -161,10 +161,6 @@ Trigger: Claude is writing a docstring or comment and types an identifier that i
 Open the identifier's definition before finishing the sentence, or cut the reference.
 Write a behavior claim only after naming the evidence that the claim is true.
 
-# Use `openai-docs` only when needed
-
-Do not read the `openai-docs` skill when the conversation, available tool definitions, or inspected local files already provide enough information to answer the user's question.
-
 # Scope searches and support conclusions
 
 Search named files or relevant subdirectories when their location is known.
@@ -357,8 +353,9 @@ Caveat: Only spawn an agent if the subtask is really off-topic, not if it is nat
 
 For an agent spawned under this section, select the model by the reasoning the subtask requires:
 
-- Use `haiku` for routine subtasks with clear steps and little judgment.
-- Use `sonnet` with `medium` reasoning effort for nontrivial subtasks that require judgment across several steps.
+- Use `sonnet` with `medium` reasoning effort for routine subtasks and for nontrivial subtasks that require judgment across several steps.
 - Use `opus` with `medium` reasoning effort for difficult subtasks that require substantial planning and complex reasoning, including long-running work with these requirements.
 
 Choose the model for the most demanding part of the subtask.
+Never run any agent on `haiku`.
+When an agent's definition selects `haiku`, pass a `model` override.
