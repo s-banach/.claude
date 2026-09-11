@@ -294,28 +294,29 @@ Treat answers and comments saved by the app as task input unless the user reques
 Do not include an intentionally uncommitted path unless the user explicitly included it in the task.
 Finish the review cycle when every path included in the change is committed and the Done gate passes.
 
-Select reviewer agents for the completed change.
-Use no reviewer agent when the change preserves behavior and meaning, can be verified directly, and makes no consequential design choices; otherwise, use `commit-correctness-reviewer`.
+Select clean context reviewers for the completed change.
+A clean context reviewer is a `commit-correctness-reviewer` or `commit-simplicity-reviewer` agent, which sees none of the parent conversation.
+Use no clean context reviewer when the change preserves behavior and meaning, can be verified directly, and makes no consequential design choices; otherwise, use `commit-correctness-reviewer`.
 Add `commit-simplicity-reviewer` when the change makes consequential design choices for which a simpler alternative could materially reduce complexity.
 State the selection and its reason in one sentence.
-Complete the pre-staging review and applicable checks even when no reviewer agent is selected.
+Complete the pre-staging review and applicable checks even when no clean context reviewer is selected.
 
 A review cycle covers one change: the first commit, fix commits produced by reviews, and reviews of those fix commits.
 The review cycle ends when the Done gate passes and any fix commits have been squashed.
-Reuse each selected reviewer agent throughout the review cycle.
-Use new reviewer agents for the next change when review selection requires them.
-After creating the first commit of a change, spawn the selected reviewer agents concurrently.
-Give each reviewer agent a prompt that names the commit sha and states the change's root goal in one sentence.
+Reuse each selected clean context reviewer throughout the review cycle.
+Use new clean context reviewers for the next change when review selection requires them.
+After creating the first commit of a change, spawn the selected clean context reviewers concurrently.
+Give each clean context reviewer a prompt that names the commit sha and states the change's root goal in one sentence.
 For correctness review of low-complexity changes, optionally use `sonnet` with `medium` reasoning effort.
 Judge complexity by the reasoning needed to verify the change, including its interactions and failure cases.
 Otherwise, omit model and reasoning effort overrides unless the user explicitly requests them.
-Each reviewer agent reports only its own scope.
+Each clean context reviewer reports only its own scope.
 Evaluate design objections against the root goal and the evidence in the review.
 Consider a refactor beyond the diff when its concrete benefit justifies its scope and risk.
-Where both reviewer agents object to one premise, resolve the premise once.
-Before spawning the reviewer agents, confirm that the project's checks report zero errors and complete the pre-staging pass in "Before running `git add`" for every staged file.
+Where both clean context reviewers object to one premise, resolve the premise once.
+Before spawning the clean context reviewers, confirm that the project's checks report zero errors and complete the pre-staging pass in "Before running `git add`" for every staged file.
 Fix the findings in a new commit.
-Send a fix commit that changes behavior or prose to each selected reviewer agent whose scope it affects.
+Send a fix commit that changes behavior or prose to each selected clean context reviewer whose scope it affects.
 Never amend a reviewed commit because a review names a sha and an amend moves the code out from under the review that passed.
 Close a fix commit without review only when the fix changes no behavior and no prose, such as whitespace or a private rename with no callers.
 After the Done gate passes, squash any fix commits so one change is one commit.
@@ -334,12 +335,12 @@ Fix every input that produces the defect, not only the cited input.
 ## Verify a fix with the check that found the defect
 
 Trigger: Claude is about to commit a fix for a review finding.
-Verify that the reviewer's stated problem exists in the parent and is resolved by the fix.
+Verify that the clean context reviewer's stated problem exists in the parent and is resolved by the fix.
 When the finding includes an executable check, run it on both versions and confirm that it fails on the parent and passes on the fix.
 
 ## Check a proposed sentence against its file before adopting it
 
-Trigger: Claude is writing a sentence into an instruction file, including text proposed by a reviewer agent.
+Trigger: Claude is writing a sentence into an instruction file, including text proposed by a clean context reviewer.
 Check the sentence against the other sentences in its rule and file.
 Verify that an added trigger is reachable past the rule's gate.
 Verify that a scope claim is true of every file it names.
@@ -350,6 +351,9 @@ Stop when the sentence contradicts nothing checked.
 Trigger: while working on a plan, Claude discovers a time-consuming subtask that will distract from the main plan.
 Spawn an agent to solve the subtask so Claude can stay focused on the main plan.
 Caveat: Only spawn an agent if the subtask is really off-topic, not if it is naturally part of the main plan.
+
+Never pass `subagent_type: "fork"` unless the user requests a fork.
+Put every fact the agent needs in its prompt, because an agent spawned without a fork sees none of the parent conversation.
 
 For an agent spawned under this section, select the model by the reasoning the subtask requires:
 
