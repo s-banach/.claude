@@ -93,7 +93,9 @@ Stop when the construct is absent or every redesign Claude can name makes the co
 - `Any` for typing, `cast`, or `getattr`.
 - Code that unpacks data out of one container and back into another.
 - Code indented more than three levels deep.
-- Constructing or indexing a `dict`, including the result of `json.loads`.
+- Parsing JSON or any other serialized data with anything other than a pydantic model, including `json.loads`.
+- Constructing a `dict` whose keys Claude chooses, instead of a `dataclass`, `NamedTuple`, or pydantic model.
+- Indexing a `dict` by a literal key.
 - A loop that reimplements a function from `itertools`, `more_itertools`, or `functools`.
 - Mutating a variable inside a loop.
 - Concatenating or formatting a string that represents a structured object, such as JSON, a URL, a shell command, or a path.
