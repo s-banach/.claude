@@ -2,13 +2,13 @@
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000"
   },
-  "permissions": {
-    "defaultMode": "auto"
-  },
   "attribution": {
     "sessionUrl": false
   },
-  "model": "opus",
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
@@ -55,6 +55,11 @@
     ]
   },
   "effortLevel": "high",
+  "modelSettings": {
+    "claude-fable-5-1": {
+      "effortLevel": "medium"
+    }
+  },
   "autoMemoryEnabled": false,
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
