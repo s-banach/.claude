@@ -85,9 +85,18 @@ When the request leaves a routine choice unspecified, choose using the conversat
 
 # Code smells
 
-Trigger: Claude is about to write `**kwargs` unpacking, `Any` for typing, `cast`, `getattr`, or code that unpacks data out of one container and back into another.
+Trigger: Claude is about to write one of the constructs below.
 Redesign so the construct is unnecessary.
 Stop when the construct is absent or every redesign Claude can name makes the code net worse.
+
+- `**kwargs` unpacking.
+- `Any` for typing, `cast`, or `getattr`.
+- Code that unpacks data out of one container and back into another.
+- Code indented more than three levels deep.
+- Constructing or indexing a `dict`, including the result of `json.loads`.
+- A loop that reimplements a function from `itertools`, `more_itertools`, or `functools`.
+- Mutating a variable inside a loop.
+- Concatenating or formatting a string that represents a structured object, such as JSON, a URL, a shell command, or a path.
 
 # Style Guide
 
