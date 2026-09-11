@@ -83,7 +83,7 @@ Ask the user which requirement controls before writing code.
 Stop until the user resolves the contradiction.
 When the request leaves a routine choice unspecified, choose using the conversation and continue.
 
-# Code smells
+# Python code smells
 
 Trigger: Claude is about to write one of the constructs below.
 Redesign so the construct is unnecessary.
