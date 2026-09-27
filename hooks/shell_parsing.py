@@ -9,10 +9,17 @@ A hook imports it by name because Python puts the running script's directory fir
 import json
 import re
 import sys
+from functools import partial, reduce
 from typing import NamedTuple
 
 # A redirection, with its target attached (`2>log`) or in the next argument (`2> log`).
-REDIRECT = re.compile(r"^(?P<fd>\d*|&)(?P<op>>>|>|<<<|<<|<)(?P<target>.*)$")
+REDIRECT = re.compile(r"^(?P<fd>\d*|&)(?P<op>>>|>|<<<|<<-|<<|<)(?P<target>.*)$")
+
+# A heredoc operator and the word naming the line that ends its body (`<<EOF`, `<<-'EOF'`, `<< "EOF"`).
+HEREDOC = re.compile(r"<<(?P<dash>-?)[ \t]*(?P<word>(?:'[^']*'|\"[^\"]*\"|\\.|[^\s;|&()<>'\"\\])+)")
+
+# A quoted or backslash-escaped piece of a heredoc word; the group that matched holds the text it stands for.
+QUOTED_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)")
 
 # Words to skip when locating the head of a segment.
 PREFIXES = {
@@ -41,14 +48,40 @@ class OpenSubstitution(NamedTuple):
     open_parens: int
 
 
+class Heredoc(NamedTuple):
+    """A heredoc whose body starts on the next line: the line that ends the body, and whether `<<-` strips leading tabs before comparing a line to it."""
+
+    delimiter: str
+    strips_tabs: bool
+
+
+def end_of_heredoc_body(command, start, heredoc):
+    """Return the index just past the line that ends this heredoc's body, which begins at `start`, or None when `start` is None or no line ends the body."""
+    if start is None:
+        return None
+    tabs = "\t*" if heredoc.strips_tabs else ""
+    end = re.compile(rf"^{tabs}{re.escape(heredoc.delimiter)}$\n?", re.MULTILINE).search(command, start)
+    return end.end() if end else None
+
+
+def end_of_heredoc_bodies(command, newline, heredocs):
+    """Return the index just past the bodies of `heredocs`, which follow one another from the newline at `newline`, or None when `heredocs` is empty or a body has no end line."""
+    if not heredocs:
+        return None
+    return reduce(partial(end_of_heredoc_body, command), heredocs, newline + 1)
+
+
 def split_segments(command):
     """Return the command's segments, splitting on shell operators outside quotes.
 
     A command substitution (`$(...)` or backticks) outside quotes becomes a segment of its own, and the word `SUBSTITUTION` takes its place in the segment around it, so `rg x $(git ls-files)` keeps an argument where the file names go.
+    A heredoc body is text the command reads on stdin, so it belongs to no segment: `git commit -F - <<'EOF'` with a message line starting `grep` holds no `grep` command. A `<<` whose body no line ends counts as no heredoc, because a shift inside arithmetic (`$((1<<2))`) matches `HEREDOC` too.
     """
     segments, buf, quote, i, n = [], [], None, 0, len(command)
     reads_pipe = False
     open_substitutions = []
+    # Heredocs opened on the current line, whose bodies start after its newline.
+    heredocs = []
     # Subshell parentheses open at the current nesting level; a `)` closes a substitution only when none are open.
     open_parens = 0
     while i < n:
@@ -78,6 +111,22 @@ def split_segments(command):
             continue
         pair = command[i : i + 2]
         closer = open_substitutions[-1].closer if open_substitutions else None
+        if command.startswith("<<<", i):
+            buf.append("<<<")  # a here-string, whose text is on this line
+            i += 3
+            continue
+        heredoc = HEREDOC.match(command, i)
+        if heredoc:
+            heredocs.append(Heredoc(QUOTED_PIECE.sub(lambda piece: "".join(piece.groups("")), heredoc["word"]), heredoc["dash"] == "-"))
+            buf.append(heredoc[0])
+            i = heredoc.end()
+            continue
+        body_end = end_of_heredoc_bodies(command, i, heredocs) if ch == "\n" else None
+        heredocs = [] if ch == "\n" else heredocs
+        if body_end is not None:
+            segments.append(Segment("".join(buf), reads_pipe))
+            buf, reads_pipe, i = [], False, body_end
+            continue
         if pair == "$(" or (ch == "`" and closer != "`"):
             open_substitutions.append(
                 OpenSubstitution(buf, reads_pipe, ")" if ch == "$" else "`", open_parens)

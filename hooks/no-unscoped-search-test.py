@@ -19,7 +19,7 @@ CASES = [
     ("/usr/bin/grep -r TODO crate/src", True),
     ("sudo egrep -r secret /", True),
     ("ag pattern src", True),
-    # rg with no path and no pipe waits on stdin: denied.
+    # rg with no path and no pipe: denied.
     ("rg TODO", True),
     ("rg -e TODO", True),
     ("rg --max-depth 5 -l TODO", True),
@@ -42,6 +42,18 @@ CASES = [
     ('rg "$(cat pattern.txt)"', True),
     ("(cd crate && rg TODO src)", False),
     ("(cd crate && rg TODO)", True),
+    # A heredoc body is text on stdin, and the commands after it are still checked.
+    ("git commit -F - <<'EOF'\nSubject\n\ngrep is replaced by rg\nEOF", False),
+    ("echo $(cat <<EOF\ngrep x\nEOF\n)", False),
+    ('cat <<-"EOF"\n\tgrep x\n\tEOF\nls', False),
+    ("paste <<A <<B\ngrep 1\nA\ngrep 2\nB", False),
+    ("cat <<EOF > notes.txt\ngrep x\nEOF\ngrep y notes.txt", True),
+    ("cat <<< 'x'\ngrep y notes.txt", True),
+    ("cat <<'E\\OF'\ngrep x\nE\\OF\nls", False),
+    ("cat <<'it'\"'\"'s'\ngrep x\nit's\nls", False),
+    # A `<<` whose body no line ends is no heredoc, so the lines after it are still checked.
+    ("echo $((1<<2))\ngrep -r x /", True),
+    ("(( x <<= 1 ))\ngrep y notes.txt", True),
     # rg that searches nothing: allowed.
     ("rg --version", False),
     ("rg --type-list", False),
