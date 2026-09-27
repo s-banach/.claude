@@ -8,8 +8,6 @@ resolve to a different set of packages than the project installed, and the run
 produces wrong results with no error.
 An interpreter named by path (`.venv/bin/python`) and a `uv run` prefix are left
 alone; both say which environment they run in.
-Whether a program should run from a file at all is checked by
-no-scriptless-file-writes.py.
 """
 
 import os
@@ -29,7 +27,7 @@ def find_venv(start):
 
 def verdict(segment):
     """Return the name of the bare interpreter this segment runs, or None."""
-    word, _ = resolve_head(segment)
+    word, _ = resolve_head(segment.text)
     if word is None or "/" in word:
         return None  # a path says which environment it runs in
     return word if base_name(word) == "python" else None

@@ -16,39 +16,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "/Users/bunbie/.claude/hooks/no-unscoped-search.py"
-            ],
+            "command": "python3 \"$HOME/.claude/hooks/no-unscoped-search.py\"",
             "timeout": 10,
-            "statusMessage": "Checking search scope"
+            "statusMessage": "Checking that the search uses rg with a scope"
           },
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "/Users/bunbie/.claude/hooks/no-scriptless-file-writes.py"
-            ],
-            "timeout": 10,
-            "statusMessage": "Checking that file-writing code lives in a file"
-          },
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "/Users/bunbie/.claude/hooks/no-python-outside-venv.py"
-            ],
+            "command": "python3 \"$HOME/.claude/hooks/no-python-outside-venv.py\"",
             "timeout": 10,
             "statusMessage": "Checking the interpreter against the project venv"
-          },
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "/Users/bunbie/.claude/hooks/no-truncated-search.py"
-            ],
-            "timeout": 10,
-            "statusMessage": "Checking that a search's output is not cut"
           }
         ]
       }

@@ -2,13 +2,14 @@
 """Reading a Bash command, and answering the PreToolUse caller, shared by the hooks here.
 
 Each hook decides what a command means.
-This module decides where the command's parts begin and end, which programs search a tree, and how a decision reaches the PreToolUse caller.
+This module decides where the command's parts begin and end, and how a decision reaches the PreToolUse caller.
 A hook imports it by name because Python puts the running script's directory first on `sys.path`.
 """
 
 import json
 import re
 import sys
+from typing import NamedTuple
 
 # A redirection, with its target attached (`2>log`) or in the next argument (`2> log`).
 REDIRECT = re.compile(r"^(?P<fd>\d*|&)(?P<op>>>|>|<<<|<<|<)(?P<target>.*)$")
@@ -19,19 +20,37 @@ PREFIXES = {
     "env", "then", "do", "else",
 }
 
-# Recursive by default: naming no path searches the whole tree.
-RECURSIVE_SEARCH = {"rg", "ripgrep", "ag", "ack", "ack-grep"}
-# Recursive only with a flag, and then with no ignore rules at all.
-OPTIONAL_RECURSIVE_SEARCH = {"grep", "egrep", "fgrep", "rgrep", "zgrep"}
-WALKERS = {"find", "fd", "fdfind"}
+
+# The word that stands in for a command substitution in the command around it, since the hook cannot know what the substitution prints.
+SUBSTITUTION = "$(...)"
 
 
-def scan_segments(command):
-    """Return [(segment, the operator that ended it)], with "" ending the last one.
+class Segment(NamedTuple):
+    """One command between shell operators, and whether a pipe gives it its stdin."""
 
-    A caller that needs to know whether one segment's output reaches the next one reads the operator, since only a pipe passes output along.
+    text: str
+    reads_pipe: bool
+
+
+class OpenSubstitution(NamedTuple):
+    """The segment a command substitution interrupted, resumed when `closer` ends the substitution."""
+
+    buf: list
+    reads_pipe: bool
+    closer: str
+    open_parens: int
+
+
+def split_segments(command):
+    """Return the command's segments, splitting on shell operators outside quotes.
+
+    A command substitution (`$(...)` or backticks) outside quotes becomes a segment of its own, and the word `SUBSTITUTION` takes its place in the segment around it, so `rg x $(git ls-files)` keeps an argument where the file names go.
     """
     segments, buf, quote, i, n = [], [], None, 0, len(command)
+    reads_pipe = False
+    open_substitutions = []
+    # Subshell parentheses open at the current nesting level; a `)` closes a substitution only when none are open.
+    open_parens = 0
     while i < n:
         ch = command[i]
         if quote:
@@ -58,38 +77,36 @@ def scan_segments(command):
             i += 1
             continue
         pair = command[i : i + 2]
-        if pair in ("||", "&&", "|&", "$("):
-            segments.append(("".join(buf), pair))
+        closer = open_substitutions[-1].closer if open_substitutions else None
+        if pair == "$(" or (ch == "`" and closer != "`"):
+            open_substitutions.append(
+                OpenSubstitution(buf, reads_pipe, ")" if ch == "$" else "`", open_parens)
+            )
+            buf, reads_pipe, open_parens = [], False, 0
+            i += len(pair) if ch == "$" else 1
+            continue
+        if ch == closer and open_parens == 0:
+            segments.append(Segment("".join(buf), reads_pipe))
+            outer = open_substitutions.pop()
+            buf, reads_pipe, open_parens = [*outer.buf, SUBSTITUTION], outer.reads_pipe, outer.open_parens
+            i += 1
+            continue
+        if pair in ("||", "&&", "|&"):
+            segments.append(Segment("".join(buf), reads_pipe))
+            reads_pipe = pair == "|&"
             buf, i = [], i + 2
             continue
-        if ch in "|;\n&`()":
-            segments.append(("".join(buf), ch))
+        if ch in "|;\n&()":
+            open_parens = max(0, open_parens + (ch == "(") - (ch == ")"))
+            segments.append(Segment("".join(buf), reads_pipe))
+            reads_pipe = ch == "|"
             buf, i = [], i + 1
             continue
         buf.append(ch)
         i += 1
-    segments.append(("".join(buf), ""))
+    segments.append(Segment("".join(buf), reads_pipe))
+    segments.extend(Segment("".join(outer.buf), outer.reads_pipe) for outer in open_substitutions)
     return segments
-
-
-def split_segments(command):
-    """Return the command's segments, splitting on shell operators outside quotes."""
-    return [segment for segment, _ in scan_segments(command)]
-
-
-def split_pipelines(command):
-    """Return each pipeline in the command as its list of segments, in order.
-
-    A pipeline is a run of segments joined by `|` or `|&`, so each segment in one list feeds its output to the segments after it.
-    Every other operator ends the pipeline, because it passes no output along.
-    """
-    pipelines, current = [], []
-    for segment, operator in scan_segments(command):
-        current.append(segment)
-        if operator not in ("|", "|&"):
-            pipelines.append(current)
-            current = []
-    return pipelines
 
 
 def split_words(segment):
@@ -207,24 +224,6 @@ def iter_arguments(args, value_flags=()):
         if arg in value_flags:
             skip = True
         yield arg
-
-
-def redirects_stdin_from_file(args):
-    """True when a `< file` redirection gives the command its stdin.
-
-    The target follows in the next argument when it is not attached, as in `< file`.
-    A target starting with `&` names another descriptor rather than a file, so `<&0` does not point stdin at a file.
-    """
-    for index, arg in enumerate(args):
-        redirect = REDIRECT.match(arg)
-        if not redirect or redirect.group("op") != "<" or redirect.group("fd"):
-            continue
-        target = redirect.group("target")
-        if not target and index + 1 < len(args):
-            target = args[index + 1]
-        if target and not target.startswith("&"):
-            return True
-    return False
 
 
 def read_input():

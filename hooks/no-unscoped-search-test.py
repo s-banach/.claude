@@ -12,27 +12,52 @@ from hook_testing import check, report
 HOOK = str(Path(__file__).with_name("no-unscoped-search.py"))
 
 CASES = [
-    # Recursive search with no scope: denied.
-    ("grep -r TODO .", True),
-    ("grep -rn TODO", True),
-    ("grep -R pattern /", True),
-    ("grep --recursive pattern ~", True),
+    # A searcher other than rg: denied, whatever its scope.
+    ("grep -n TODO crate/src/engine.rs", True),
+    ("cargo test 2>&1 | grep -c FAILED", True),
+    ("grep -r TODO crate/src", True),
+    ("/usr/bin/grep -r TODO crate/src", True),
+    ("sudo egrep -r secret /", True),
+    ("ag pattern src", True),
+    # rg with no path and no pipe waits on stdin: denied.
     ("rg TODO", True),
+    ("rg -e TODO", True),
+    ("rg --max-depth 5 -l TODO", True),
+    ("cd /tmp && rg x", True),
+    # rg with no path reading a pipe: allowed.
+    ("cargo test 2>&1 | rg -c FAILED", False),
+    ("git diff -W crate/src/engine.rs | rg -v '^[+-]'", False),
+    ("cargo test |& rg FAILED", False),
+    # A pipe feeds only the segment right after it.
+    ("cargo test | sort; rg x", True),
+    # A command substitution supplies the outer command's arguments, and its own command is still checked.
+    ("rg -n TODO $(git ls-files)", False),
+    ("rg -n TODO `git ls-files`", False),
+    ("rg TODO $(git ls-files) crate/src", False),
+    ("rg TODO $(git ls-files) .", True),
+    ("echo $(grep TODO notes.txt)", True),
+    ("echo `rg TODO`", True),
+    ("echo $(cd crate; (rg TODO src)) done", False),
+    ("echo $(cd crate; (rg TODO)) done", True),
+    ('rg "$(cat pattern.txt)"', True),
+    ("(cd crate && rg TODO src)", False),
+    ("(cd crate && rg TODO)", True),
+    # rg that searches nothing: allowed.
+    ("rg --version", False),
+    ("rg --type-list", False),
+    # Recursive search with no scope: denied.
     ("rg TODO .", True),
-    ("ag pattern", True),
-    ("sudo grep -r secret /", True),
-    ("cd /tmp && grep -r x .", True),
-    # A quoted root is still that root.
-    ('grep -r pattern "."', True),
-    ("grep -r pattern '.'", True),
-    ('grep -r pattern "$HOME"', True),
+    ('rg pattern "."', True),
+    ("rg pattern '.'", True),
+    ('rg pattern "$HOME"', True),
+    ("rg --files", True),
+    ("rg --files -g '*.py'", True),
     # Recursive search rooted in a dependency or build directory: denied.
-    ("grep -r pattern .venv", True),
+    ("rg pattern .venv", True),
     ("rg pattern node_modules", True),
     ("rg pattern crate/target/debug", True),
+    ('rg TODO "my dir/node_modules"', True),
     ("find node_modules -name '*.json'", True),
-    ('rg pattern "node_modules"', True),
-    ('grep -r TODO "my dir/node_modules"', True),
     # Ignore rules switched off: denied.
     ("rg -uu pattern src/", True),
     ("rg --no-ignore pattern src/", True),
@@ -42,32 +67,26 @@ CASES = [
     ("find / -name x", True),
     ("fd -e rs", True),
     # Scoped search: allowed.
-    ("grep -r TODO crate/src", False),
     ("rg TODO crate/src", False),
     ("rg -t rust TODO crate/src", False),
+    ("rg -e TODO crate/src", False),
+    ("rg --files crate/src", False),
+    ("rg -n TODO crate/src/engine.rs", False),
+    ('rg TODO "my dir"', False),
     ("find crate/src -name '*.rs'", False),
     ("find . -maxdepth 1 -name '*.toml'", False),
     ("rg --max-depth 1 pattern .", False),
     ("rg --max-depth=1 pattern .", False),
-    ('grep -r TODO "crate/src"', False),
-    ('grep -r TODO "my dir"', False),
     # An option's value is not a search path.
     ("find src -name node_modules", False),
     ("find crate/src -name .venv", False),
-    ("grep -r pattern src --exclude-dir node_modules", False),
-    # Not a recursive walk: allowed.
-    ("grep -c . settings.json", False),
-    ("grep -n TODO crate/src/engine.rs", False),
-    ("git diff -W crate/src/engine.rs | grep -v '^[+-]'", False),
-    ("cargo test 2>&1 | grep -c FAILED", False),
-    ("pmset -g assertions | grep caffeinate", False),
-    ("git grep engine", False),
-    ("grep -e pattern Cargo.toml", False),
+    ("rg pattern src -g '!node_modules'", False),
     # Redirections are not search paths.
-    ("grep -rn pattern crate/src 2>/dev/null", False),
+    ("rg pattern crate/src 2>/dev/null", False),
     ("rg pattern crate/src > .venv/out.txt", False),
-    ("grep -rn pattern crate/src 2> log.txt", False),
+    ("rg pattern crate/src 2> log.txt", False),
     # Untouched commands.
+    ("git grep engine", False),
     ("ls -la", False),
     ("cat notes.txt", False),
     ("./scripts/lint.sh", False),

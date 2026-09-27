@@ -1,23 +1,20 @@
-# Track configuration only. Everything else here is session state, cache, or credentials:
-# projects/ holds 749M of transcripts, file-history/ holds 94M of edit snapshots, and
-# credential files land at this level. Ignore every path, then re-include configuration by name.
+# Track configuration only. Everything else here is session state, cache, or credentials.
+# Ignore every path, then re-include each committed file by name.
+# `*` also matches files inside a re-included directory, so each file there needs its own line.
 *
 
 !.gitignore
 !CLAUDE.md
 !settings.json
-!keybindings.json
 
 !agents/
-!agents/**
-!commands/
-!commands/**
-!hooks/
-!hooks/**
-!skills/
-!skills/**
-!output-styles/
-!output-styles/**
+!agents/implementation-reviewer.md
+!agents/premise-reviewer.md
 
-# Byte-compiled modules, regenerated whenever a hook imports its neighbours.
-__pycache__/
+!hooks/
+!hooks/hook_testing.py
+!hooks/shell_parsing.py
+!hooks/no-python-outside-venv.py
+!hooks/no-python-outside-venv-test.py
+!hooks/no-unscoped-search.py
+!hooks/no-unscoped-search-test.py
