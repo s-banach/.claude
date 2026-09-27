@@ -8,7 +8,7 @@
   "permissions": {
     "defaultMode": "auto"
   },
-  "model": "fable",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -25,6 +25,12 @@
             "command": "python3 \"$HOME/.claude/hooks/no-python-outside-venv.py\"",
             "timeout": 10,
             "statusMessage": "Checking the interpreter against the project venv"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/no-cd.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking that the command does not change directory"
           }
         ]
       }
@@ -34,6 +40,9 @@
   "modelSettings": {
     "claude-fable-5-1": {
       "effortLevel": "medium"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high"
     }
   },
   "autoMemoryEnabled": false,

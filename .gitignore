@@ -18,3 +18,5 @@
 !hooks/no-python-outside-venv-test.py
 !hooks/no-unscoped-search.py
 !hooks/no-unscoped-search-test.py
+!hooks/no-cd.py
+!hooks/no-cd-test.py

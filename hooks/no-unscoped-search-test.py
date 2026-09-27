@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check no-unscoped-search.py against commands whose verdict is known.
 
-Run `python3 no-unscoped-search-test.py` from this directory after editing the hook.
+Run `python3 ~/.claude/hooks/no-unscoped-search-test.py` after editing the hook.
 Each case is (command, denied), where denied is True when the hook must block it.
 """
 
@@ -19,6 +19,9 @@ CASES = [
     ("/usr/bin/grep -r TODO crate/src", True),
     ("sudo egrep -r secret /", True),
     ("ag pattern src", True),
+    ("if grep -q x notes.txt; then :; fi", True),
+    ("! grep x notes.txt", True),
+    ("\\grep x notes.txt", True),
     # rg with no path and no pipe: denied.
     ("rg TODO", True),
     ("rg -e TODO", True),

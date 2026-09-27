@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check no-python-outside-venv.py against commands whose verdict is known.
 
-Run `python3 no-python-outside-venv-test.py` from this directory after editing the hook.
+Run `python3 ~/.claude/hooks/no-python-outside-venv-test.py` after editing the hook.
 Each case is (command, denied), where denied is True when the hook must block it
 in a directory that holds a `.venv`. Every case is also run in a directory that
 holds none, where the hook must allow it.

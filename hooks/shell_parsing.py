@@ -24,7 +24,7 @@ QUOTED_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)")
 # Words to skip when locating the head of a segment.
 PREFIXES = {
     "sudo", "command", "time", "nice", "nohup", "builtin", "exec", "xargs",
-    "env", "then", "do", "else",
+    "env", "if", "elif", "while", "until", "then", "do", "else", "!", "{",
 }
 
 
@@ -196,8 +196,8 @@ def split_words(segment):
 
 
 def unquote(word):
-    """Remove shell quote characters, so `"."` and `'.'` both compare equal to `.`."""
-    return word.replace("'", "").replace('"', "")
+    """Remove shell quote characters and backslash escapes, so `"."`, `'.'`, and `\.` all compare equal to `.`."""
+    return word.replace("'", "").replace('"', "").replace("\\", "")
 
 
 def queries_location(words):
