@@ -23,9 +23,9 @@ HEREDOC = re.compile(r"<<(?P<dash>-?)[ \t]*(?P<word>(?:'[^']*'|\"[^\"]*\"|\\.|[^
 # A quoted or backslash-escaped piece of a heredoc word; the group that matched holds the text it stands for.
 QUOTED_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)")
 
-# Words to skip when locating the head of a segment.
+# Program names to skip when locating the head of a segment, whatever directory the word names them from.
 PREFIXES = {
-    "sudo", "command", "time", "nice", "nohup", "builtin", "exec", "xargs",
+    "sudo", "command", "time", "nice", "nohup", "builtin", "exec", "xargs", "run-check",
     "env", "if", "elif", "while", "until", "then", "do", "else", "!", "{",
 }
 
@@ -231,8 +231,8 @@ def resolve_head(segment):
         if "=" in word.split("/")[0] and not word.startswith("="):
             words = words[1:]  # leading VAR=value assignment
             continue
-        if word in PREFIXES:
-            if word == "command" and queries_location(words[1:]):
+        if program_name(word) in PREFIXES:
+            if program_name(word) == "command" and queries_location(words[1:]):
                 return None, []  # prints where a program lives, runs nothing
             words, saw_prefix = words[1:], True
             continue

@@ -7,6 +7,9 @@
 !CLAUDE.md
 !settings.json
 
+!bin/
+!bin/run-check
+
 !agents/
 !agents/implementation-reviewer.md
 !agents/premise-reviewer.md

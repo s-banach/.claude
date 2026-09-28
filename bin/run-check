@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Run a check (tests, linters, CI scripts) and report whether it passed without printing all its output.
+# On success, print one line with the exit status and the log file holding the full output.
+# On failure, print the last 50 lines of output, then the exit status and the log path.
+# Exits with the command's own status.
+tmp=${TMPDIR:-/tmp}
+log=$(mktemp "${tmp%/}/run-check.XXXXXX")
+"$@" >"$log" 2>&1
+status=$?
+if [ "$status" -eq 0 ]; then
+  echo "exit 0 ($(wc -c <"$log" | tr -d ' ') bytes in $log)"
+else
+  tail -n 50 "$log"
+  echo "exit $status; full output: $log"
+fi
+exit "$status"

@@ -24,6 +24,7 @@ CASES = [
     ("cd src && python3 -m pytest", True),
     ("cat data.json | python3 process.py", True),
     ("PYTHONPATH=. python3 script.py", True),
+    ("~/.claude/bin/run-check python3 -m pytest", True),
     # An interpreter named by path, or chosen by uv: allowed.
     (".venv/bin/python script.py", False),
     ("/Users/me/proj/.venv/bin/python3 script.py", False),
