@@ -1,6 +1,6 @@
 """Rule for `bash-rules.py`: deny `cd`, `pushd`, and `popd`.
 
-The hook input's `cwd` is the directory a command starts in, so after a `cd` the other rules judge the rest of the command against the wrong directory.
+The hook input's `cwd` is the directory a command starts in, so after a `cd`, `no_python_outside_venv.py` looks for the project's `.venv` in the wrong directory.
 The next command may not start in that directory either: Claude Code moves the shell back to the project directory after a `cd` out of it.
 A command that names its directories, with absolute paths or a program's directory flag, does the same thing whatever directory it starts in.
 """
