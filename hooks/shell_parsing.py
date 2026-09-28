@@ -198,7 +198,7 @@ def split_words(segment):
 
 
 def unquote(word):
-    """Remove shell quote characters and backslash escapes, so `"."`, `'.'`, and `\.` all compare equal to `.`."""
+    r"""Remove shell quote characters and backslash escapes, so `"."`, `'.'`, and `\.` all compare equal to `.`."""
     return word.replace("'", "").replace('"', "").replace("\\", "")
 
 
