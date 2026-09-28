@@ -7,11 +7,12 @@ Each rule module has a `verdict(segments, cwd)` that returns the reason it denie
 """
 
 import no_cd
+import no_chained_commit
 import no_python_outside_venv
 import no_unscoped_search
 from shell_parsing import deny, read_input, split_segments
 
-RULES = (no_unscoped_search, no_python_outside_venv, no_cd)
+RULES = (no_unscoped_search, no_python_outside_venv, no_cd, no_chained_commit)
 
 
 def main():

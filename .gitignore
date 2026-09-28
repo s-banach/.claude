@@ -22,3 +22,5 @@
 !hooks/no_unscoped_search_test.py
 !hooks/no_cd.py
 !hooks/no_cd_test.py
+!hooks/no_chained_commit.py
+!hooks/no_chained_commit_test.py
