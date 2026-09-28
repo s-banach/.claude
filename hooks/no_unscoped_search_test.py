@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Check no-unscoped-search.py against commands whose verdict is known.
+"""Check no_unscoped_search.py against commands whose verdict is known.
 
-Run `python3 ~/.claude/hooks/no-unscoped-search-test.py` after editing the hook.
-Each case is (command, denied), where denied is True when the hook must block it.
+Run `python3 ~/.claude/hooks/no_unscoped_search_test.py` after editing the rule.
+Each case is (command, denied), where denied is True when the rule must block it.
 """
 
-from pathlib import Path
-
+import no_unscoped_search
 from hook_testing import check, report
-
-HOOK = str(Path(__file__).with_name("no-unscoped-search.py"))
 
 CASES = [
     # A searcher other than rg: denied, whatever its scope.
@@ -116,7 +113,7 @@ CASES = [
 
 
 def main():
-    report(check(HOOK, CASES), len(CASES))
+    report(check(no_unscoped_search, CASES), len(CASES))
 
 
 if __name__ == "__main__":

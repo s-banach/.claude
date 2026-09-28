@@ -14,9 +14,11 @@
 !hooks/
 !hooks/hook_testing.py
 !hooks/shell_parsing.py
-!hooks/no-python-outside-venv.py
-!hooks/no-python-outside-venv-test.py
-!hooks/no-unscoped-search.py
-!hooks/no-unscoped-search-test.py
-!hooks/no-cd.py
-!hooks/no-cd-test.py
+!hooks/bash-rules.py
+!hooks/bash_rules_test.py
+!hooks/no_python_outside_venv.py
+!hooks/no_python_outside_venv_test.py
+!hooks/no_unscoped_search.py
+!hooks/no_unscoped_search_test.py
+!hooks/no_cd.py
+!hooks/no_cd_test.py

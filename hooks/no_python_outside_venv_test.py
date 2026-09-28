@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Check no-python-outside-venv.py against commands whose verdict is known.
+"""Check no_python_outside_venv.py against commands whose verdict is known.
 
-Run `python3 ~/.claude/hooks/no-python-outside-venv-test.py` after editing the hook.
-Each case is (command, denied), where denied is True when the hook must block it
+Run `python3 ~/.claude/hooks/no_python_outside_venv_test.py` after editing the rule.
+Each case is (command, denied), where denied is True when the rule must block it
 in a directory that holds a `.venv`. Every case is also run in a directory that
-holds none, where the hook must allow it.
+holds none, where the rule must allow it.
 """
 
 import tempfile
 from pathlib import Path
 
+import no_python_outside_venv
 from hook_testing import check, report
-
-HOOK = str(Path(__file__).with_name("no-python-outside-venv.py"))
 
 CASES = [
     # A bare interpreter name resolves through PATH: denied.
@@ -56,9 +55,9 @@ def main():
         venv.mkdir()
         (venv / "pyvenv.cfg").write_text("home = /usr/bin\n")
 
-        failures = check(HOOK, CASES, cwd=with_venv, note=" beside a .venv")
+        failures = check(no_python_outside_venv, CASES, cwd=with_venv, note=" beside a .venv")
         failures += check(
-            HOOK,
+            no_python_outside_venv,
             [(command, False) for command, _ in CASES],
             cwd=without_venv,
             note=" with no .venv",

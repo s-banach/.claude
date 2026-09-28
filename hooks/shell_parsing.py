@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Reading a Bash command, and answering the PreToolUse caller, shared by the hooks here.
+"""Reading a Bash command, and answering the PreToolUse caller, shared by `bash-rules.py` and its rules.
 
-Each hook decides what a command means.
+Each rule decides what a command means.
 This module decides where the command's parts begin and end, and how a decision reaches the PreToolUse caller.
-A hook imports it by name because Python puts the running script's directory first on `sys.path`.
+A rule imports it by name because Python puts the running script's directory first on `sys.path`.
 """
 
 import json
+import os
 import re
 import sys
 from functools import partial, reduce
+from pathlib import Path
 from typing import NamedTuple
 
 # A redirection, with its target attached (`2>log`) or in the next argument (`2> log`).
@@ -276,7 +278,7 @@ def iter_arguments(args, value_flags=()):
 
 
 def read_input():
-    """Return (the Bash command, the whole hook input) read from stdin.
+    """Return (the Bash command, the resolved directory it starts in) read from the hook input on stdin.
 
     Exits 0, which allows the command, when stdin holds no JSON object: a hook
     that cannot read its input has nothing to say about the command.
@@ -287,7 +289,8 @@ def read_input():
         sys.exit(0)
     if not isinstance(payload, dict):
         sys.exit(0)
-    return (payload.get("tool_input") or {}).get("command") or "", payload
+    command = (payload.get("tool_input") or {}).get("command") or ""
+    return command, Path(payload.get("cwd") or os.getcwd()).resolve()
 
 
 def deny(reason):

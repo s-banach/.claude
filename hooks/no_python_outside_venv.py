@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""PreToolUse hook for Bash: deny a bare `python` when the project has a virtualenv.
+"""Rule for `bash-rules.py`: deny a bare `python` when the project has a virtualenv.
 
-Reads the hook input JSON on stdin and writes a PreToolUse decision on stdout.
 A bare `python` or `python3` runs whichever interpreter PATH resolves first, so
 in a project holding a `.venv` it usually runs the system interpreter: imports
 resolve to a different set of packages than the project installed, and the run
@@ -10,10 +8,7 @@ An interpreter named by path (`.venv/bin/python`) and a `uv run` prefix are left
 alone; both say which environment they run in.
 """
 
-import os
-from pathlib import Path
-
-from shell_parsing import base_name, deny, read_input, resolve_head, split_segments
+from shell_parsing import base_name, resolve_head
 
 
 def find_venv(start):
@@ -25,7 +20,7 @@ def find_venv(start):
     return None
 
 
-def verdict(segment):
+def bare_interpreter(segment):
     """Return the name of the bare interpreter this segment runs, or None."""
     word, _ = resolve_head(segment.text)
     if word is None or "/" in word:
@@ -33,21 +28,16 @@ def verdict(segment):
     return word if base_name(word) == "python" else None
 
 
-def main():
-    command, payload = read_input()
-    for segment in split_segments(command):
-        name = verdict(segment)
-        if not name:
-            continue
-        venv = find_venv(Path(payload.get("cwd") or os.getcwd()).resolve())
-        if venv is None:
-            return
-        deny(
-            f"`{name}` runs whichever interpreter PATH resolves first, and this "
-            f"project has a virtualenv at `{venv}`. Run `uv run <script>`, or "
-            f"name the interpreter `{venv}/bin/python`."
-        )
-
-
-if __name__ == "__main__":
-    main()
+def verdict(segments, cwd):
+    """Return the reason the command, starting in `cwd`, is denied, or None."""
+    name = next(filter(None, map(bare_interpreter, segments)), None)
+    if name is None:
+        return None
+    venv = find_venv(cwd)
+    if venv is None:
+        return None
+    return (
+        f"`{name}` runs whichever interpreter PATH resolves first, and this "
+        f"project has a virtualenv at `{venv}`. Run `uv run <script>`, or "
+        f"name the interpreter `{venv}/bin/python`."
+    )

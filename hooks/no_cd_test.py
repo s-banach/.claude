@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Check no-cd.py against commands whose verdict is known.
+"""Check no_cd.py against commands whose verdict is known.
 
-Run `python3 ~/.claude/hooks/no-cd-test.py` after editing the hook.
-Each case is (command, denied), where denied is True when the hook must block it.
+Run `python3 ~/.claude/hooks/no_cd_test.py` after editing the rule.
+Each case is (command, denied), where denied is True when the rule must block it.
 """
 
-from pathlib import Path
-
+import no_cd
 from hook_testing import check, report
-
-HOOK = str(Path(__file__).with_name("no-cd.py"))
 
 CASES = [
     # A command that changes directory: denied, wherever it sits in the command.
@@ -38,7 +35,7 @@ CASES = [
 
 
 def main():
-    report(check(HOOK, CASES), len(CASES))
+    report(check(no_cd, CASES), len(CASES))
 
 
 if __name__ == "__main__":
