@@ -41,6 +41,7 @@ Applies to all prose: chat, comments, docstrings, commits, PRs, docs.
 
 ## Shell commands
 
+- A hook limits each foreground Bash call's timeout to 5 seconds. A foreground call still running then moves to the background, keeps running, and Claude is notified when it exits. Start anything that may take longer, such as tests, builds, installs, and CI watches, with `run_in_background`. While it runs, do work that doesn't depend on its result. Take no step that depends on its result, such as committing after a check, until it reports. When no such work remains, end the turn.
 - Never `cd`, `pushd`, or `popd`. Use absolute paths, or the program's own directory flag (`git -C <dir>`, `uv run --directory <dir>`).
 - Chain only read-only commands with `&&`, `||`, or `;`. Run each command that changes files or state in its own call.
 - Never pipe a check (tests, linters, CI scripts) into `tail`: the rest of the output is lost, so seeing more means rerunning the check, and the pipeline's exit status is `tail`'s. To learn whether it passes, run `~/.claude/bin/run-check <command>`, which saves the full output to a log file and prints the exit status and the log's path, after the last 50 lines on failure. To see particular lines, search that log with `rg`. Otherwise, read the whole output.
@@ -82,7 +83,7 @@ Also:
 - To narrow a run while debugging, edit the run data and revert afterward so the change shows in `git diff`.
 - Make runners idempotent: rerunning after an interruption reaches the same final state. Existing output is not proof of complete output.
 - When editing a module whose entrypoint breaks these rules, fix the entrypoint in the same change.
-- For jobs longer than a few minutes: estimate the runtime first, report progress so a hang is distinguishable, and save partial results so a late crash loses nothing. When waiting on a background process, start a watcher that reports its exit status and log tail.
+- For jobs longer than a few minutes: estimate the runtime first, report progress so a hang is distinguishable, and save partial results so a late crash loses nothing. When waiting on a process that Claude Code does not report on, such as one started with `&` or `nohup`, start a watcher that reports its exit status and log tail.
 
 ## Git
 

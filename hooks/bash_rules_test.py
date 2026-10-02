@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Check bash-rules.py end to end: the hook input it reads, and the PreToolUse decision it writes.
+"""Check bash-rules.py end to end: the hook input it reads, and the PreToolUse output it writes.
 
 Run `python3 ~/.claude/hooks/bash_rules_test.py` after editing the hook.
 Each rule's own test covers which commands it denies, so the cases here cover only what passes through the hook.
-A hook that crashes writes nothing to stdout, which the PreToolUse caller reads as allowing the command, so a failing case prints the hook's stderr.
+A hook that crashes writes nothing to stdout, which the PreToolUse caller reads as allowing the command unchanged, so a failing case prints the hook's stderr.
 """
 
 import json
@@ -13,23 +13,30 @@ import tempfile
 from pathlib import Path
 
 from hook_testing import report
+from foreground_timeout import FOREGROUND_TIMEOUT_MS
 
 HOOK = str(Path(__file__).with_name("bash-rules.py"))
 
 
 def run_hook(stdin):
-    """Return (how many reasons the hook gave for denying the command in `stdin`, the hook's stderr)."""
+    """Return (how many reasons the hook gave for denying the command in `stdin`, the tool input it runs the call with or None, the hook's stderr)."""
     result = subprocess.run([sys.executable, HOOK], input=stdin, capture_output=True, text=True)
     if not result.stdout.strip():
-        return 0, result.stderr
-    decision = json.loads(result.stdout)["hookSpecificOutput"]
-    if decision["permissionDecision"] != "deny":
-        return 0, result.stderr
-    return len(decision["permissionDecisionReason"].splitlines()), result.stderr
+        return 0, None, result.stderr
+    output = json.loads(result.stdout)["hookSpecificOutput"]
+    reasons = output.get("permissionDecisionReason") or ""
+    return len(reasons.splitlines()), output.get("updatedInput"), result.stderr
 
 
-def hook_input(command, cwd):
-    return json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)})
+def tool_input(command, timeout=None, run_in_background=False):
+    """Return a Bash tool input holding `timeout` and `run_in_background` only when given."""
+    timeout_entry = {} if timeout is None else {"timeout": timeout}
+    background_entry = {"run_in_background": True} if run_in_background else {}
+    return {"command": command} | timeout_entry | background_entry
+
+
+def hook_input(command, cwd, timeout=None, run_in_background=False):
+    return json.dumps({"tool_name": "Bash", "tool_input": tool_input(command, timeout, run_in_background), "cwd": str(cwd)})
 
 
 def main():
@@ -37,26 +44,31 @@ def main():
         project = Path(root)
         (project / ".venv").mkdir()
         (project / ".venv" / "pyvenv.cfg").write_text("home = /usr/bin\n")
-        # Each case is (hook input, how many rules the command breaks).
+        # Each case is (hook input, how many rules the command breaks, the tool input the call runs with or None).
         cases = [
-            (hook_input("ls src", project), 0),
-            (hook_input("grep -n TODO src/main.py", project), 1),
-            (hook_input("cd src", project), 1),
+            (hook_input("ls src", project), 0, tool_input("ls src", FOREGROUND_TIMEOUT_MS)),
+            (hook_input("grep -n TODO src/main.py", project), 1, None),
+            (hook_input("cd src", project), 1, None),
             # A command breaking several rules gets every rule's reason.
-            (hook_input("cd src && grep -n TODO main.py", project), 2),
+            (hook_input("cd src && grep -n TODO main.py", project), 2, None),
             # The venv rule reads `cwd` from the hook input.
-            (hook_input("python3 x.py", project), 1),
-            (hook_input("python3 x.py", project.parent), 0),
-            # Input that is not a JSON object allows the command.
-            ("not json", 0),
+            (hook_input("python3 x.py", project), 1, None),
+            (hook_input("python3 x.py", project.parent), 0, tool_input("python3 x.py", FOREGROUND_TIMEOUT_MS)),
+            # A foreground call gets at most the foreground timeout.
+            (hook_input("ls", project, timeout=600000), 0, tool_input("ls", FOREGROUND_TIMEOUT_MS)),
+            (hook_input("ls", project, timeout=1000), 0, tool_input("ls", 1000)),
+            # A background call runs unchanged.
+            (hook_input("ls", project, timeout=600000, run_in_background=True), 0, None),
+            # Input that is not a JSON object allows the command unchanged.
+            ("not json", 0, None),
         ]
         failures = 0
-        for stdin, broken in cases:
-            reasons, stderr = run_hook(stdin)
-            if reasons == broken:
+        for stdin, broken, runs_with in cases:
+            reasons, updated, stderr = run_hook(stdin)
+            if (reasons, updated) == (broken, runs_with):
                 continue
             failures += 1
-            print(f"FAIL want {broken} reasons, got {reasons}: {stdin}")
+            print(f"FAIL want {broken} reasons and {runs_with}, got {reasons} and {updated}: {stdin}")
             if stderr.strip():
                 print(f"    {stderr.strip().splitlines()[-1]}")
     report(failures, len(cases))

@@ -19,6 +19,7 @@
 !hooks/shell_parsing.py
 !hooks/bash-rules.py
 !hooks/bash_rules_test.py
+!hooks/foreground_timeout.py
 !hooks/no_python_outside_venv.py
 !hooks/no_python_outside_venv_test.py
 !hooks/no_unscoped_search.py

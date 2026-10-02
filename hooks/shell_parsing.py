@@ -278,10 +278,10 @@ def iter_arguments(args, value_flags=()):
 
 
 def read_input():
-    """Return (the Bash command, the resolved directory it starts in) read from the hook input on stdin.
+    """Return (the Bash tool input, the resolved directory the command starts in) read from the hook input on stdin.
 
-    Exits 0, which allows the command, when stdin holds no JSON object: a hook
-    that cannot read its input has nothing to say about the command.
+    Exits 0, which allows the command unchanged, when stdin holds no JSON object:
+    a hook that cannot read its input has nothing to say about the command.
     """
     try:
         payload = json.load(sys.stdin)
@@ -289,8 +289,7 @@ def read_input():
         sys.exit(0)
     if not isinstance(payload, dict):
         sys.exit(0)
-    command = (payload.get("tool_input") or {}).get("command") or ""
-    return command, Path(payload.get("cwd") or os.getcwd()).resolve()
+    return payload.get("tool_input") or {}, Path(payload.get("cwd") or os.getcwd()).resolve()
 
 
 def deny(reason):
@@ -306,4 +305,13 @@ def deny(reason):
             }
         )
     )
+    sys.exit(0)
+
+
+def update_input(tool_input):
+    """Write the PreToolUse output that runs the call with `tool_input` in place of the input Claude sent, and exit.
+
+    The output makes no permission decision, so the permission rules still decide whether the call runs.
+    """
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": tool_input}}))
     sys.exit(0)
