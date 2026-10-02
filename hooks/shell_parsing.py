@@ -251,8 +251,8 @@ def program_name(word):
 
 
 def base_name(word):
-    """Strip a trailing version from an interpreter name (`python3.12` -> `python`)."""
-    name = program_name(word)
+    """Strip a Windows `.exe` suffix and a trailing version from an interpreter name (`python3.12` and `python.exe` -> `python`)."""
+    name = program_name(word).removesuffix(".exe")
     return re.sub(r"[\d.]+$", "", name) or name
 
 

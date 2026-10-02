@@ -19,6 +19,7 @@ CASES = [
     ("python3 script.py", True),
     ("python3.12 -c 'print(1)'", True),
     ("python", True),
+    ("python.exe script.py", True),
     ("sudo python3 script.py", True),
     ("env python3 script.py", True),
     ("cd src && python3 -m pytest", True),

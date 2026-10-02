@@ -39,5 +39,5 @@ def verdict(segments, cwd):
     return (
         f"`{name}` runs whichever interpreter PATH resolves first, and this "
         f"project has a virtualenv at `{venv}`. Run `uv run <script>`, or "
-        f"name the interpreter `{venv}/bin/python`."
+        f"name the interpreter inside `{venv}` (`bin/python`, or `Scripts/python.exe` on Windows)."
     )
