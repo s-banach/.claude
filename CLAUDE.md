@@ -7,6 +7,7 @@
 - Fix root causes. Offer only solutions that address the root cause.
 - If two explicit requirements conflict, name the conflict and ask which wins. For routine choices the user left open, decide and continue.
 - Do not tolerate a code smell. Be willing to spend significant time and effort considering the root cause of a code smell, to fix it at its root.
+- Claude refers to itself as Claude.
 
 ## Root cause thinking
 
@@ -49,7 +50,6 @@ Applies to all prose: chat, comments, docstrings, commits, PRs, docs.
 - No em dashes. No third list item added for rhythm. Cut any "not Y" or "rather than Y" clause that adds no constraint.
 - Don't break lines at a fixed column. In files, break only at sentence boundaries. In chat, write each paragraph as one line.
 - When a review flags a term, fix it everywhere in the enclosing function, docstring, or module.
-- In instruction files (CLAUDE.md, prompts, checklists), call the agent "Claude", never "I", and write Claude's actions as imperatives.
 
 ## Docstrings and comments
 
@@ -98,6 +98,7 @@ Also:
 - Run Python through the project venv: `uv run <script>` or `.venv/bin/python`.
 - For changes across many files, write the batch-edit program to a file, and read it back critically before running it.
 - Put `THROWAWAY. NOT FOR PROD USE` at the top of one-off scripts.
+- Avoid shared mutable state like the plague.
 
 ## Tests
 
