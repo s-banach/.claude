@@ -35,10 +35,9 @@ SUBSTITUTION = "$(...)"
 
 
 class Segment(NamedTuple):
-    """One command between shell operators, whether a pipe gives it its stdin, and whether it runs inside a command substitution."""
+    """One command between shell operators, and whether it runs inside a command substitution."""
 
     text: str
-    reads_pipe: bool
     inside_substitution: bool
 
 
@@ -46,7 +45,6 @@ class OpenSubstitution(NamedTuple):
     """The segment a command substitution interrupted, resumed when `closer` ends the substitution."""
 
     buf: list
-    reads_pipe: bool
     closer: str
     open_parens: int
 
@@ -77,11 +75,10 @@ def end_of_heredoc_bodies(command, newline, heredocs):
 def split_segments(command):
     """Return the command's segments, splitting on shell operators outside quotes.
 
-    A command substitution (`$(...)` or backticks) outside quotes becomes a segment of its own, and the word `SUBSTITUTION` takes its place in the segment around it, so `rg x $(git ls-files)` keeps an argument where the file names go.
+    A command substitution (`$(...)` or backticks) outside quotes becomes a segment of its own, and the word `SUBSTITUTION` takes its place in the segment around it, so `git -C $(pwd) commit` keeps an argument where the directory goes.
     A heredoc body is text the command reads on stdin, so it belongs to no segment: `git commit -F - <<'EOF'` with a message line starting `grep` holds no `grep` command. A `<<` whose body no line ends counts as no heredoc, because a shift inside arithmetic (`$((1<<2))`) matches `HEREDOC` too.
     """
     segments, buf, quote, i, n = [], [], None, 0, len(command)
-    reads_pipe = False
     open_substitutions = []
     # Heredocs opened on the current line, whose bodies start after its newline.
     heredocs = []
@@ -127,38 +124,34 @@ def split_segments(command):
         body_end = end_of_heredoc_bodies(command, i, heredocs) if ch == "\n" else None
         heredocs = [] if ch == "\n" else heredocs
         if body_end is not None:
-            segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
-            buf, reads_pipe, i = [], False, body_end
+            segments.append(Segment("".join(buf), bool(open_substitutions)))
+            buf, i = [], body_end
             continue
         if pair == "$(" or (ch == "`" and closer != "`"):
-            open_substitutions.append(
-                OpenSubstitution(buf, reads_pipe, ")" if ch == "$" else "`", open_parens)
-            )
-            buf, reads_pipe, open_parens = [], False, 0
+            open_substitutions.append(OpenSubstitution(buf, ")" if ch == "$" else "`", open_parens))
+            buf, open_parens = [], 0
             i += len(pair) if ch == "$" else 1
             continue
         if ch == closer and open_parens == 0:
-            segments.append(Segment("".join(buf), reads_pipe, True))
+            segments.append(Segment("".join(buf), True))
             outer = open_substitutions.pop()
-            buf, reads_pipe, open_parens = [*outer.buf, SUBSTITUTION], outer.reads_pipe, outer.open_parens
+            buf, open_parens = [*outer.buf, SUBSTITUTION], outer.open_parens
             i += 1
             continue
         if pair in ("||", "&&", "|&"):
-            segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
-            reads_pipe = pair == "|&"
+            segments.append(Segment("".join(buf), bool(open_substitutions)))
             buf, i = [], i + 2
             continue
         if ch in "|;\n&()":
             open_parens = max(0, open_parens + (ch == "(") - (ch == ")"))
-            segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
-            reads_pipe = ch == "|"
+            segments.append(Segment("".join(buf), bool(open_substitutions)))
             buf, i = [], i + 1
             continue
         buf.append(ch)
         i += 1
-    segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
+    segments.append(Segment("".join(buf), bool(open_substitutions)))
     # A substitution with no closer still holds the segments that enclose it; only the outermost runs at the top level.
-    segments.extend(Segment("".join(outer.buf), outer.reads_pipe, depth > 0) for depth, outer in enumerate(open_substitutions))
+    segments.extend(Segment("".join(outer.buf), depth > 0) for depth, outer in enumerate(open_substitutions))
     return segments
 
 
@@ -200,7 +193,7 @@ def split_words(segment):
 
 
 def unquote(word):
-    r"""Remove shell quote characters and backslash escapes, so `"."`, `'.'`, and `\.` all compare equal to `.`."""
+    r"""Remove shell quote characters and backslash escapes, so `"grep"`, `'grep'`, and `\grep` all compare equal to `grep`."""
     return word.replace("'", "").replace('"', "").replace("\\", "")
 
 

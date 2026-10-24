@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 from hook_testing import report
-from foreground_timeout import FOREGROUND_TIMEOUT_MS
+from foreground_timeout import FOREGROUND_TIMEOUT_MS, KILLED_AT_TIMEOUT_PREFIX
 
 HOOK = str(Path(__file__).with_name("bash-rules.py"))
 
@@ -35,6 +35,11 @@ def tool_input(command, timeout=None, run_in_background=False):
     return {"command": command} | timeout_entry | background_entry
 
 
+def killed_at(command, timeout):
+    """Return the tool input of a foreground call that Claude Code kills after `timeout` milliseconds."""
+    return tool_input(KILLED_AT_TIMEOUT_PREFIX + command, timeout)
+
+
 def hook_input(command, cwd, timeout=None, run_in_background=False):
     return json.dumps({"tool_name": "Bash", "tool_input": tool_input(command, timeout, run_in_background), "cwd": str(cwd)})
 
@@ -46,17 +51,20 @@ def main():
         (project / ".venv" / "pyvenv.cfg").write_text("home = /usr/bin\n")
         # Each case is (hook input, how many rules the command breaks, the tool input the call runs with or None).
         cases = [
-            (hook_input("ls src", project), 0, tool_input("ls src", FOREGROUND_TIMEOUT_MS)),
+            (hook_input("ls src", project), 0, killed_at("ls src", FOREGROUND_TIMEOUT_MS)),
             (hook_input("grep -n TODO src/main.py", project), 1, None),
             (hook_input("cd src", project), 1, None),
             # A command breaking several rules gets every rule's reason.
             (hook_input("cd src && grep -n TODO main.py", project), 2, None),
             # The venv rule reads `cwd` from the hook input.
             (hook_input("python3 x.py", project), 1, None),
-            (hook_input("python3 x.py", project.parent), 0, tool_input("python3 x.py", FOREGROUND_TIMEOUT_MS)),
-            # A foreground call gets at most the foreground timeout.
-            (hook_input("ls", project, timeout=600000), 0, tool_input("ls", FOREGROUND_TIMEOUT_MS)),
-            (hook_input("ls", project, timeout=1000), 0, tool_input("ls", 1000)),
+            (hook_input("python3 x.py", project.parent), 0, killed_at("python3 x.py", FOREGROUND_TIMEOUT_MS)),
+            # A foreground call is killed after at most the foreground timeout.
+            (hook_input("ls", project, timeout=600000), 0, killed_at("ls", FOREGROUND_TIMEOUT_MS)),
+            (hook_input("ls", project, timeout=1000), 0, killed_at("ls", 1000)),
+            (hook_input("ls", project, timeout=0), 0, killed_at("ls", FOREGROUND_TIMEOUT_MS)),
+            # The rules judge the command Claude sent, so the added `sleep 0` does not put a command before a commit.
+            (hook_input("git commit -m x", project), 0, killed_at("git commit -m x", FOREGROUND_TIMEOUT_MS)),
             # A background call runs unchanged.
             (hook_input("ls", project, timeout=600000, run_in_background=True), 0, None),
             # Input that is not a JSON object allows the command unchanged.

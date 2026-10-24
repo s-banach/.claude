@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""PreToolUse hook for Bash: deny a command that breaks any rule in `RULES`, giving the reason from every rule it breaks, and otherwise limit its timeout with `foreground_timeout.limited_input`.
+"""PreToolUse hook for Bash: deny a command that breaks any rule in `RULES`, giving the reason from every rule it breaks, and otherwise make Claude Code kill a foreground call that runs too long, with `foreground_timeout.limited_input`.
 
 Reads the hook input JSON on stdin and writes a PreToolUse output on stdout.
 Every rule lives in one hook, so each Bash call starts one Python process and parses the command once.
 Each rule module has a `verdict(segments, cwd)` that returns the reason it denies the command, or None.
+The rules judge the command Claude sent, before `limited_input` changes it.
 """
 
 import foreground_timeout
 import no_cd
 import no_chained_commit
-import no_interactive_python
+import no_grep
 import no_python_outside_venv
-import no_unscoped_search
 from shell_parsing import deny, read_input, split_segments, update_input
 
-RULES = (no_unscoped_search, no_python_outside_venv, no_interactive_python, no_cd, no_chained_commit)
+RULES = (no_grep, no_python_outside_venv, no_cd, no_chained_commit)
 
 
 def main():

@@ -64,7 +64,7 @@ Applies to all prose: chat, comments, docstrings, commits, PRs, docs.
 
 ## Shell commands
 
-- A hook limits each foreground Bash call's timeout to 5 seconds. A foreground call still running after 5 seconds moves to the background, keeps running, and Claude is notified when it exits. Start anything that may take longer, such as tests, builds, installs, and CI watches, with `run_in_background`. While it runs, do work that doesn't depend on its result. Take no step that depends on its result, such as committing after a check, until it reports. When no such work remains, end the turn.
+- A hook kills each foreground Bash call still running after 5 seconds. Start anything that may take longer, such as tests, builds, installs, and CI watches, with `run_in_background`. While it runs, do work that doesn't depend on its result. Take no step that depends on its result, such as committing after a check, until it reports. When no such work remains, end the turn.
 - Never `cd`, `pushd`, or `popd`. Use absolute paths, or the program's own directory flag (`git -C <dir>`, `uv run --directory <dir>`).
 - Chain only read-only commands with `&&`, `||`, or `;`. Run each command that changes files or state in its own call.
 - Never pipe a check (tests, linters, CI scripts) into `tail`: the rest of the output is lost, so seeing more means rerunning the check, and the pipeline's exit status is `tail`'s. To learn whether it passes, run `~/.claude/bin/run-check <command>`, which saves the full output to a log file, prints the last 50 lines on failure, then prints the exit status and the log's path. To see particular lines, search that log with `rg`. Otherwise, read the whole output.

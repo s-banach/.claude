@@ -23,10 +23,8 @@
 !hooks/foreground_timeout.py
 !hooks/no_python_outside_venv.py
 !hooks/no_python_outside_venv_test.py
-!hooks/no_unscoped_search.py
-!hooks/no_unscoped_search_test.py
-!hooks/no_interactive_python.py
-!hooks/no_interactive_python_test.py
+!hooks/no_grep.py
+!hooks/no_grep_test.py
 !hooks/no_cd.py
 !hooks/no_cd_test.py
 !hooks/no_chained_commit.py
