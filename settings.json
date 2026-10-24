@@ -1,11 +1,12 @@
 {
   "env": {
-    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000"
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "350000"
   },
   "attribution": {
     "sessionUrl": false
   },
   "permissions": {
+    "deny": [],
     "defaultMode": "auto"
   },
   "model": "opus",
@@ -37,5 +38,6 @@
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
   "autoCompactEnabled": true,
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "feedbackDrafts": "off"
 }

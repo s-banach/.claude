@@ -13,6 +13,7 @@
 !agents/
 !agents/implementation-reviewer.md
 !agents/premise-reviewer.md
+!agents/simplicity-reviewer.md
 
 !hooks/
 !hooks/hook_testing.py
