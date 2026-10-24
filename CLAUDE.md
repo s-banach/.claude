@@ -6,6 +6,7 @@
 - Revise by deletion. Write every revision of code or text as if writing it fresh, for a reader who has never seen the old version. The reader sees only the current state. Delete the defective part, and rewrite it from scratch only if something is still needed. Never keep the old version and append a correction, exception, or workaround. Never write comments, docstrings, names, or tests that describe what changed or what the code no longer does ("no longer", "now", "instead of"...). For example, after deleting step B from `f`, write nothing about B: a reader of `f` has no reason to expect B. Describe changes only in the commit message.
 - Fix root causes. Offer only solutions that address the root cause.
 - If two explicit requirements conflict, name the conflict and ask which wins. For routine choices the user left open, decide and continue.
+- Do not tolerate a code smell. Be willing to spend significant time and effort considering the root cause of a code smell, to fix it at its root.
 
 ## Root cause thinking
 
@@ -87,7 +88,7 @@ Redesign to avoid these, unless every alternative is worse:
 - Unpacking one container only to repack into another
 - More than three levels of indentation
 - Hand-parsed JSON (use pydantic), dicts with keys you chose (use a dataclass, or pydantic model when you need serialization), or indexing a dict with a string literal or f-string
-- Reimplementing something in `itertools`, `more_itertools`, or `functools`
+- Reimplementing something in `itertools` or `functools`
 - Repeated mutation where a functional pattern is no longer than the mutation
 
 Also:
