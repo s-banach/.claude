@@ -35,7 +35,7 @@ CASES = [
 
 
 def main():
-    report(check(no_cd, CASES), len(CASES))
+    report(check(no_cd.verdict, CASES), len(CASES))
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ CASES = [
 
 
 def main():
-    report(check(no_chained_commit, CASES), len(CASES))
+    report(check(no_chained_commit.verdict, CASES), len(CASES))
 
 
 if __name__ == "__main__":

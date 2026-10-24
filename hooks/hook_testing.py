@@ -6,14 +6,14 @@ import sys
 from shell_parsing import split_segments
 
 
-def check(rule, cases, cwd=None, note=""):
-    """Print a line for each case `rule` gets wrong; return how many there were.
+def check(verdict, cases, cwd=None, note=""):
+    """Print a line for each case `verdict` gets wrong; return how many there were.
 
-    `rule` is a rule module, and `cwd` the directory each command starts in.
+    `verdict` is a rule's `verdict` function, or one with its other parameters bound, and `cwd` the directory each command starts in.
     """
     failures = 0
     for command, denied in cases:
-        if bool(rule.verdict(split_segments(command), cwd)) == denied:
+        if bool(verdict(split_segments(command), cwd)) == denied:
             continue
         failures += 1
         want = "DENY" if denied else "allow"
