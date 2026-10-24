@@ -56,9 +56,7 @@ Applies to all prose: chat, comments, docstrings, commits, PRs, docs.
 
 ## Docstrings and comments
 
-- Assume the reader sees the signature. Don't restate types. Document meanings, sources, constraints, and behavior not visible in the types.
-- Include enough context for the reader to skip opening other files.
-- Before referencing an identifier defined in another file, open its definition.
+Assume the reader sees the signature. Don't restate types. Document meanings, constraints, and behavior not visible in the types.
 
 ## Verify before claiming
 
