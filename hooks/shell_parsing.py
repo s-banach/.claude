@@ -9,6 +9,7 @@ A rule imports it by name because Python puts the running script's directory fir
 import json
 import os
 import re
+import shlex
 import sys
 from functools import partial, reduce
 from pathlib import Path
@@ -23,15 +24,51 @@ HEREDOC = re.compile(r"<<(?P<dash>-?)[ \t]*(?P<word>(?:'[^']*'|\"[^\"]*\"|\\.|[^
 # A quoted or backslash-escaped piece of a heredoc word; the group that matched holds the text it stands for.
 QUOTED_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)")
 
-# Program names to skip when locating the head of a segment, whatever directory the word names them from.
+# An arithmetic expansion (`$((n+1))`) with no command substitution inside, which runs no command; one level of parentheses may nest inside it.
+ARITHMETIC = re.compile(r"\$\(\((?:[^()$]|\$(?!\()|\((?:[^()$]|\$(?!\())*\))*\)\)")
+
+
+class Prefix(NamedTuple):
+    """A program or keyword that runs the command written after it: its options that take the next word as their value, and how many operands come before that command."""
+
+    value_options: frozenset = frozenset()
+    operands: int = 0
+
+
+# Programs and keywords to skip when locating the head of a segment, whatever directory the word names them from.
 PREFIXES = {
-    "sudo", "command", "time", "nice", "nohup", "builtin", "exec", "xargs", "run-check",
-    "env", "if", "elif", "while", "until", "then", "do", "else", "!", "{",
+    "sudo": Prefix(
+        frozenset({
+            "-a", "-c", "-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-T", "-R",
+            "--user", "--group", "--close-from", "--chdir", "--host", "--prompt", "--role", "--type",
+            "--other-user", "--command-timeout", "--chroot",
+        })
+    ),
+    "env": Prefix(frozenset({"-u", "-C", "-P", "-S", "--unset", "--chdir", "--split-string"})),
+    "nice": Prefix(frozenset({"-n", "--adjustment"})),
+    "exec": Prefix(frozenset({"-a"})),
+    "xargs": Prefix(
+        frozenset({
+            "-E", "-I", "-J", "-L", "-n", "-P", "-R", "-S", "-s", "-a", "-d",
+            "--max-args", "--max-procs", "--max-chars", "--arg-file", "--delimiter",
+        })
+    ),
+    "timeout": Prefix(frozenset({"-s", "-k", "--signal", "--kill-after"}), operands=1),
+    **dict.fromkeys(
+        ("command", "time", "nohup", "builtin", "run-check", "if", "elif", "while", "until", "then", "do", "else", "!", "{"),
+        Prefix(),
+    ),
 }
 
+# Shells that run the command string given with `-c`.
+SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 
-# The word that stands in for a command substitution in the command around it, since the hook cannot know what the substitution prints.
-SUBSTITUTION = "$(...)"
+# Letters of shell options whose value is the next word, one word for each such letter in a group (`-euo pipefail`).
+SHELL_VALUE_LETTERS = "oO"
+
+
+# The word that stands in for a command substitution in the command around it, since the hook cannot know what the substitution prints. It is a plain word, so a command string that holds it (`sh -c "git commit -m $(cat msg)"`) reads it as an argument.
+SUBSTITUTION = "substitution-output"
 
 
 class Segment(NamedTuple):
@@ -42,11 +79,12 @@ class Segment(NamedTuple):
 
 
 class OpenSubstitution(NamedTuple):
-    """The segment a command substitution interrupted, resumed when `closer` ends the substitution."""
+    """The segment a command substitution interrupted, resumed when `closer` ends the substitution, inside the quote that was open when it began (`"` or None)."""
 
     buf: list
     closer: str
     open_parens: int
+    quote: str | None
 
 
 class Heredoc(NamedTuple):
@@ -73,10 +111,52 @@ def end_of_heredoc_bodies(command, newline, heredocs):
 
 
 def split_segments(command):
+    """Return the commands that `command` runs, each as a `Segment`.
+
+    These are the parts `split_operators` finds, with a command that runs a command string as shell code (`sh -c '...'`, `eval '...'`) replaced by the segments of that string.
+    """
+    return [nested for segment in split_operators(command) for nested in run_segments(segment)]
+
+
+def run_segments(segment):
+    """Return the segments of the command string `segment` runs as shell code, or `segment` itself when it runs none."""
+    script = command_string(*resolve_head(segment.text))
+    if script is None:
+        return [segment]
+    return [Segment(nested.text, nested.inside_substitution or segment.inside_substitution) for nested in split_segments(script)]
+
+
+def command_string(word, args):
+    """Return the command string that the command word and arguments run as shell code, or None.
+
+    That is the joined arguments of `eval`, or the first operand of a shell in `SHELLS` given `-c`, alone or grouped with other options (`-lc`).
+    """
+    if word is None:
+        return None
+    name = program_name(word)
+    if name == "eval":
+        return " ".join(args)
+    if name not in SHELLS:
+        return None
+    arguments = list(iter_arguments(args))
+    index, letters = 0, ""
+    while index < len(arguments) and arguments[index][:1] in ("-", "+") and arguments[index] not in ("-", "+"):
+        option = arguments[index]
+        index += 1
+        if option == "--":
+            break
+        if not option.startswith("--"):
+            letters += option[1:] if option[0] == "-" else ""
+            index += sum(letter in SHELL_VALUE_LETTERS for letter in option[1:])
+    operands = arguments[index:]
+    return operands[0] if "c" in letters and operands else None
+
+
+def split_operators(command):
     """Return the command's segments, splitting on shell operators outside quotes.
 
-    A command substitution (`$(...)` or backticks) outside quotes becomes a segment of its own, and the word `SUBSTITUTION` takes its place in the segment around it, so `git -C $(pwd) commit` keeps an argument where the directory goes.
-    A heredoc body is text the command reads on stdin, so it belongs to no segment: `git commit -F - <<'EOF'` with a message line starting `grep` holds no `grep` command. A `<<` whose body no line ends counts as no heredoc, because a shift inside arithmetic (`$((1<<2))`) matches `HEREDOC` too.
+    A command substitution (`$(...)` or backticks), outside quotes or inside double quotes, becomes a segment of its own, and the word `SUBSTITUTION` takes its place in the segment around it, so `git -C $(pwd) commit` keeps an argument where the directory goes.
+    A heredoc body is text the command reads on stdin, so it belongs to no segment: `git commit -F - <<'EOF'` with a message line starting `grep` holds no `grep` command. A `<<` whose body no line ends counts as no heredoc, because a shift inside arithmetic (`((1<<2))`) matches `HEREDOC` too.
     """
     segments, buf, quote, i, n = [], [], None, 0, len(command)
     open_substitutions = []
@@ -86,11 +166,23 @@ def split_segments(command):
     open_parens = 0
     while i < n:
         ch = command[i]
+        pair = command[i : i + 2]
+        closer = open_substitutions[-1].closer if open_substitutions else None
+        if ch == "\\" and quote != "'" and i + 1 < n:
+            buf.append(pair)
+            i += 2
+            continue
+        arithmetic = ARITHMETIC.match(command, i) if quote != "'" else None
+        if arithmetic:
+            buf.append(arithmetic[0])
+            i = arithmetic.end()
+            continue
+        if quote != "'" and (pair == "$(" or (ch == "`" and closer != "`")):
+            open_substitutions.append(OpenSubstitution(buf, ")" if ch == "$" else "`", open_parens, quote))
+            buf, open_parens, quote = [], 0, None
+            i += len(pair) if ch == "$" else 1
+            continue
         if quote:
-            if ch == "\\" and quote == '"' and i + 1 < n:
-                buf.append(command[i : i + 2])
-                i += 2
-                continue
             if ch == quote:
                 quote = None
             buf.append(ch)
@@ -101,16 +193,10 @@ def split_segments(command):
             buf.append(ch)
             i += 1
             continue
-        if ch == "\\" and i + 1 < n:
-            buf.append(command[i : i + 2])
-            i += 2
-            continue
         if ch == "&" and ((buf and buf[-1] in "><") or command[i + 1 : i + 2] == ">"):
             buf.append(ch)  # part of a redirection (`2>&1`, `<&0`, `&>log`), not an operator
             i += 1
             continue
-        pair = command[i : i + 2]
-        closer = open_substitutions[-1].closer if open_substitutions else None
         if command.startswith("<<<", i):
             buf.append("<<<")  # a here-string, whose text is on this line
             i += 3
@@ -127,15 +213,10 @@ def split_segments(command):
             segments.append(Segment("".join(buf), bool(open_substitutions)))
             buf, i = [], body_end
             continue
-        if pair == "$(" or (ch == "`" and closer != "`"):
-            open_substitutions.append(OpenSubstitution(buf, ")" if ch == "$" else "`", open_parens))
-            buf, open_parens = [], 0
-            i += len(pair) if ch == "$" else 1
-            continue
         if ch == closer and open_parens == 0:
             segments.append(Segment("".join(buf), True))
             outer = open_substitutions.pop()
-            buf, open_parens = [*outer.buf, SUBSTITUTION], outer.open_parens
+            buf, open_parens, quote = [*outer.buf, SUBSTITUTION], outer.open_parens, outer.quote
             i += 1
             continue
         if pair in ("||", "&&", "|&"):
@@ -193,8 +274,14 @@ def split_words(segment):
 
 
 def unquote(word):
-    r"""Remove shell quote characters and backslash escapes, so `"grep"`, `'grep'`, and `\grep` all compare equal to `grep`."""
-    return word.replace("'", "").replace('"', "").replace("\\", "")
+    r"""Return the word after shell quote removal, so `"grep"`, `'grep'`, and `\grep` all compare equal to `grep`, and `'a "b"'` becomes `a "b"`.
+
+    A word with an unclosed quote loses every quote character and backslash.
+    """
+    try:
+        return "".join(shlex.split(word))
+    except ValueError:
+        return word.replace("'", "").replace('"', "").replace("\\", "")
 
 
 def queries_location(words):
@@ -220,24 +307,31 @@ def resolve_head(segment):
     cares only about the program name passes it through `program_name`.
     """
     words = [unquote(word) for word in split_words(segment)]
-    saw_prefix = False
     while words:
         word = words[0]
         if "=" in word.split("/")[0] and not word.startswith("="):
             words = words[1:]  # leading VAR=value assignment
             continue
-        if program_name(word) in PREFIXES:
-            if program_name(word) == "command" and queries_location(words[1:]):
-                return None, []  # prints where a program lives, runs nothing
-            words, saw_prefix = words[1:], True
-            continue
-        if word.startswith("-") and saw_prefix:
-            words = words[1:]  # options belonging to a skipped prefix word
-            continue
-        break
+        prefix = PREFIXES.get(program_name(word))
+        if prefix is None:
+            break
+        if program_name(word) == "command" and queries_location(words[1:]):
+            return None, []  # prints where a program lives, runs nothing
+        words = after_prefix(words[1:], prefix)
     if not words:
         return None, []
     return words[0], words[1:]
+
+
+def after_prefix(args, prefix):
+    """Return the arguments of a prefix program from the command it runs on: past its options, their values, and its operands."""
+    index = 0
+    while index < len(args) and args[index].startswith("-") and args[index] != "-":
+        if args[index] == "--":
+            index += 1
+            break
+        index += 2 if args[index] in prefix.value_options else 1
+    return args[index + prefix.operands :]
 
 
 def program_name(word):
