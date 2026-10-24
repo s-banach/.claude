@@ -17,7 +17,7 @@ from shell_parsing import deny, read_input, split_segments, update_input
 RULES = (no_grep, no_python_outside_venv, no_cd, no_chained_commit)
 
 # Ends every denial, since a command rewritten only to get past a rule breaks the rule all the same.
-ON_DENIAL = "Follow the reason above or ask the user; never rewrite the command to get it past the hook."
+ON_DENIAL = "Follow each reason above or ask the user; never rewrite the command to get it past the hook."
 
 
 def main():
