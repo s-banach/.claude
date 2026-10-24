@@ -64,7 +64,9 @@ Applies to all prose: chat, comments, docstrings, commits, PRs, docs.
 
 ## Shell commands
 
-- A hook kills each foreground Bash call still running after 5 seconds. Start anything that may take longer, such as tests, builds, installs, and CI watches, with `run_in_background`. While it runs, do work that doesn't depend on its result. Take no step that depends on its result, such as committing after a check, until it reports. When no such work remains, end the turn.
+- Run each Bash call in the foreground or the background. A hook kills a foreground call still running after 5 seconds. A background call (`run_in_background`) has no time limit. Run anything that may take longer in the background. Keep working while the background command runs unless there's nothing else you can do while waiting. Wait for its result before a step that needs it, such as committing after a check.
+- When a foreground call is killed ("Command timed out after 5s"), check what it changed, then rerun it in the background.
+- When a hook denies a command, follow its reason or ask the user; never rewrite the command to get it past the hook.
 - Never `cd`, `pushd`, or `popd`. Use absolute paths, or the program's own directory flag (`git -C <dir>`, `uv run --directory <dir>`).
 - Chain only read-only commands with `&&`, `||`, or `;`. Run each command that changes files or state in its own call.
 - Never pipe a check (tests, linters, CI scripts) into `tail`: the rest of the output is lost, so seeing more means rerunning the check, and the pipeline's exit status is `tail`'s. To learn whether it passes, run `~/.claude/bin/run-check <command>`, which saves the full output to a log file, prints the last 50 lines on failure, then prints the exit status and the log's path. To see particular lines, search that log with `rg`. Otherwise, read the whole output.

@@ -6,6 +6,7 @@ Each rule's own test covers which commands it denies, so the cases here cover on
 A hook that crashes writes nothing to stdout, which the PreToolUse caller reads as allowing the command unchanged, so a failing case prints the hook's stderr.
 """
 
+import importlib
 import json
 import subprocess
 import sys
@@ -16,16 +17,24 @@ from hook_testing import report
 from foreground_timeout import FOREGROUND_TIMEOUT_MS, KILLED_AT_TIMEOUT_PREFIX
 
 HOOK = str(Path(__file__).with_name("bash-rules.py"))
+ON_DENIAL = importlib.import_module("bash-rules").ON_DENIAL
+
+
+def reason_count(denial):
+    """Return how many rules' reasons the hook's denial text gives, or None when a denial does not end with `ON_DENIAL`."""
+    if not denial:
+        return 0
+    *reasons, last = denial.splitlines()
+    return len(reasons) if last == ON_DENIAL else None
 
 
 def run_hook(stdin):
-    """Return (how many reasons the hook gave for denying the command in `stdin`, the tool input it runs the call with or None, the hook's stderr)."""
+    """Return (`reason_count` of the hook's denial of the command in `stdin`, the tool input it runs the call with or None, the hook's stderr)."""
     result = subprocess.run([sys.executable, HOOK], input=stdin, capture_output=True, text=True)
     if not result.stdout.strip():
         return 0, None, result.stderr
     output = json.loads(result.stdout)["hookSpecificOutput"]
-    reasons = output.get("permissionDecisionReason") or ""
-    return len(reasons.splitlines()), output.get("updatedInput"), result.stderr
+    return reason_count(output.get("permissionDecisionReason")), output.get("updatedInput"), result.stderr
 
 
 def tool_input(command, timeout=None, run_in_background=False):
