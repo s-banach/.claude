@@ -35,10 +35,11 @@ SUBSTITUTION = "$(...)"
 
 
 class Segment(NamedTuple):
-    """One command between shell operators, and whether a pipe gives it its stdin."""
+    """One command between shell operators, whether a pipe gives it its stdin, and whether it runs inside a command substitution."""
 
     text: str
     reads_pipe: bool
+    inside_substitution: bool
 
 
 class OpenSubstitution(NamedTuple):
@@ -126,7 +127,7 @@ def split_segments(command):
         body_end = end_of_heredoc_bodies(command, i, heredocs) if ch == "\n" else None
         heredocs = [] if ch == "\n" else heredocs
         if body_end is not None:
-            segments.append(Segment("".join(buf), reads_pipe))
+            segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
             buf, reads_pipe, i = [], False, body_end
             continue
         if pair == "$(" or (ch == "`" and closer != "`"):
@@ -137,26 +138,27 @@ def split_segments(command):
             i += len(pair) if ch == "$" else 1
             continue
         if ch == closer and open_parens == 0:
-            segments.append(Segment("".join(buf), reads_pipe))
+            segments.append(Segment("".join(buf), reads_pipe, True))
             outer = open_substitutions.pop()
             buf, reads_pipe, open_parens = [*outer.buf, SUBSTITUTION], outer.reads_pipe, outer.open_parens
             i += 1
             continue
         if pair in ("||", "&&", "|&"):
-            segments.append(Segment("".join(buf), reads_pipe))
+            segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
             reads_pipe = pair == "|&"
             buf, i = [], i + 2
             continue
         if ch in "|;\n&()":
             open_parens = max(0, open_parens + (ch == "(") - (ch == ")"))
-            segments.append(Segment("".join(buf), reads_pipe))
+            segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
             reads_pipe = ch == "|"
             buf, i = [], i + 1
             continue
         buf.append(ch)
         i += 1
-    segments.append(Segment("".join(buf), reads_pipe))
-    segments.extend(Segment("".join(outer.buf), outer.reads_pipe) for outer in open_substitutions)
+    segments.append(Segment("".join(buf), reads_pipe, bool(open_substitutions)))
+    # A substitution with no closer still holds the segments that enclose it; only the outermost runs at the top level.
+    segments.extend(Segment("".join(outer.buf), outer.reads_pipe, depth > 0) for depth, outer in enumerate(open_substitutions))
     return segments
 
 

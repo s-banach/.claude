@@ -22,10 +22,15 @@ CASES = [
     ("X=\"$(pytest | tail)\" && git commit -m x", True),
     ("command -v pytest && git commit -m x", True),
     ("pytest && git --attr-source HEAD commit -m x", True),
-    # The unquoted substitution runs before the commit, so it counts as a command before it.
-    ("git commit -F $(mktemp)", True),
-    # A commit that runs first: allowed, with anything after it.
+    ("X=$(pytest | tail) && git commit -m x", True),
+    ("git commit $(git add -A)", True),
+    ("git commit -m `git add -A; echo msg`", True),
+    ("pytest && echo $(git commit -m x)", True),
+    ("echo $(git add -A; git commit -m x)", True),
+    # A commit that runs first: allowed, with anything after it, and with substitutions in its arguments that only print text.
     ("git commit -m x", False),
+    ("git commit -F $(mktemp)", False),
+    ("git commit -F `mktemp` && git log -1", False),
     ("git commit -m x && git log -1", False),
     ("git -C repo commit -m x; git log -1", False),
     ("(git commit -m x)", False),
