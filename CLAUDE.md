@@ -18,11 +18,12 @@ Don't be afraid to delete clutter that gets in the way.
 
 ## Speak directly
 
-Every sentence should give the reader something to check or act on: what something does, how much, compared to what, or what happens if. Make the thing under discussion the subject, and make what it does the main verb.
+Every sentence should give the reader something to check or act on: what something does, how much, compared to what, or what happens if. Make the thing under discussion the subject, and make the main verb what it does or the property it has.
 
-1. Don't bury the verb behind "is."
+1. Don't put an empty noun phrase after "is." Use "is" to define a term or to give a thing a property.
 - Bad: "Caching is the change that moves the needle."
 - Good: "Caching cuts median response time from 450 ms to 60 ms."
+- Good: "M₁(G) is dense in M(G)."
 
 2. Don't put a placeholder word where the real thing should be, and don't announce a point instead of making it.
 - Bad: "Here's the key: it's not the model, it's the prompt."
@@ -31,8 +32,6 @@ Every sentence should give the reader something to check or act on: what somethi
 3. Don't give objects a mind. Things can take, cost, rise, fall, and fail; they can't tell, decide, or reward. If a person actually did the deciding, make the person the subject.
 - Bad: "The data tells a clear story."
 - Good: "Revenue rose every quarter with the discount and fell every quarter without it."
-
-Test: delete the sentence. If the reader lost a fact, keep it. If they lost only emphasis, rewrite it as the fact or cut it.
 
 ## Writing
 
@@ -133,7 +132,7 @@ Goals: commit only what Claude wrote for this change, and review it before commi
 One change (a complete feature) is one commit and one review cycle.
 
 1. Run the project's checks until they report zero errors, then commit.
-2. Spawn one to three parallel agents from `premise-reviewer`, `simplicity-reviewer`, and `implementation-reviewer`, as fits the commit. (For a simple change, `implementation-reviewer` alone suffices. For complicated code, `simplicity-reviewer`. For code that touches upon design, `premise-reviewer`.) Give each agent the repository path and the sha. If calling `premise-reviewer`, provide it every user message that shaped the request behind the change, quoted verbatim, including later corrections. If the user has approved a specific plan, point `premise-reviewer` at the plan.
+2. Spawn one to three parallel agents from `premise-reviewer`, `simplicity-reviewer`, and `implementation-reviewer`, as fits the commit. (For a simple change, `implementation-reviewer` alone suffices. For complicated code, `simplicity-reviewer`. For design choices Claude made without an approved plan, including departures from one, `premise-reviewer`. A change that carries out a step of a plan approved by the user needs no `premise-reviewer`, because the user already checked the plan's premises.) Give each agent the repository path and the sha. If calling `premise-reviewer`, provide it every user message that shaped the request behind the change, quoted verbatim, including later corrections. If the change departs from a plan approved by the user, point `premise-reviewer` at the plan.
 3. Handle premise findings first. For each finding against a premise set by the user, ask the user and stop until they answer. Act on implementation findings only after every premise finding is resolved, because resolving one may redo or drop the change.
 4. Fix findings in new commits, never by amending a reviewed commit. When adopting a fix written out by the reviewer, apply it exactly as written. Send fixes that change behavior or prose back to the same reviewers, so each one remembers what it proposed. Fix every input that produces a reported defect, not only the cited one. Confirm each fix: the problem exists in the parent and is gone in the fix commit, running the reviewer's check on both if one was given.
 5. Resolve every objection by adopting it or declining it with a reason told to the user. Never write a declined objection into the repo.
