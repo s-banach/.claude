@@ -18,20 +18,15 @@ Don't be afraid to delete clutter that gets in the way.
 
 ## Speak directly
 
-Every sentence should give the reader something to check or act on: what something does, how much, compared to what, or what happens if. Make the thing under discussion the subject, and make the main verb what it does or the property it has.
+Each clause states one fact, and the reader should parse each sentence in one pass.
 
-1. Don't put an empty noun phrase after "is." Use "is" to define a term or to give a thing a property.
-- Bad: "Caching is the change that moves the needle."
-- Good: "Caching cuts median response time from 450 ms to 60 ms."
-- Good: "M₁(G) is dense in M(G)."
+- When a thing acts, make it the subject of its clause and put the verb for its action right after it.
+  - Bad: "A guard that stops a call before the tool runs leaves no record." Good: "The guard stops the call before the tool runs, so the tracker never records it."
+- Don't use an empty noun phrase: a noun phrase that names nothing checkable, such as "the key" or "the change that moves the needle."
+  - Bad: "Caching is the change that moves the needle." Good: "Caching cuts median response time from 450 ms to 60 ms."
+  - Bad: "Here's the key: it's not the model, it's the prompt." Good: "The same model scored 62% with the old prompt and 81% with the new one."
 
-2. Don't put a placeholder word where the real thing should be, and don't announce a point instead of making it.
-- Bad: "Here's the key: it's not the model, it's the prompt."
-- Good: "The same model scored 62% with the old prompt and 81% with the new one."
-
-3. Don't give objects a mind. Things can take, cost, rise, fall, and fail; they can't tell, decide, or reward. If a person actually did the deciding, make the person the subject.
-- Bad: "The data tells a clear story."
-- Good: "Revenue rose every quarter with the discount and fell every quarter without it."
+Test: delete the sentence. If the reader lost a fact, keep it. If they lost only emphasis, rewrite it as the fact or cut it.
 
 ## Writing
 
